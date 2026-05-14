@@ -63,19 +63,21 @@ export default function CommunicationsList() {
         <Text style={{ fontSize: 22, fontWeight: '700', color: COLORS.n900, letterSpacing: -0.3 }}>Messages</Text>
       </View>
 
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 10, gap: 8 }}
-      >
-        <Chip label="All projects" active={filter === 'all'}    onPress={() => setFilter('all')} />
-        {unreadCount > 0 ? (
-          <Chip label={`Unread · ${unreadCount}`} active={filter === 'unread'} onPress={() => setFilter('unread')} />
-        ) : null}
-        {projects.map(p => (
-          <Chip key={p.id} label={p.name} active={filter === p.id} onPress={() => setFilter(p.id)} />
-        ))}
-      </ScrollView>
+      <View style={{ height: 52, paddingBottom: 10 }}>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={{ paddingHorizontal: 16, gap: 8, alignItems: 'center' }}
+        >
+          <Chip label="All projects" active={filter === 'all'}    onPress={() => setFilter('all')} />
+          {unreadCount > 0 ? (
+            <Chip label={`Unread · ${unreadCount}`} active={filter === 'unread'} onPress={() => setFilter('unread')} />
+          ) : null}
+          {projects.map(p => (
+            <Chip key={p.id} label={p.name} active={filter === p.id} onPress={() => setFilter(p.id)} />
+          ))}
+        </ScrollView>
+      </View>
 
       <ScrollView
         style={{ flex: 1, backgroundColor: '#fff', borderTopWidth: 1, borderTopColor: COLORS.n200 }}

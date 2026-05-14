@@ -37,7 +37,7 @@ export default function AppLayout() {
       <Tabs.Screen
         name="communications"
         options={{
-          title: 'Messages',
+          title: 'Comms',
           tabBarIcon: ({ color, size }) => <MessageSquare size={size ?? 22} color={color} strokeWidth={1.8} />,
         }}
       />

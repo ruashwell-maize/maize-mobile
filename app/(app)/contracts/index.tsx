@@ -66,23 +66,25 @@ export default function ContractsList() {
         <Text style={{ fontSize: 22, fontWeight: '700', color: COLORS.n900, letterSpacing: -0.3 }}>Contracts</Text>
       </View>
 
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 12, gap: 8 }}
-      >
-        <Chip label={`All · ${counts.all}`} active={filter === 'all'} onPress={() => setFilter('all')} />
-        {counts.attention > 0 ? (
-          <Chip
-            label={`Awaiting you · ${counts.attention}`}
-            active={filter === 'attention'}
-            onPress={() => setFilter('attention')}
-          />
-        ) : null}
-        <Chip label="Active" active={filter === 'active'} onPress={() => setFilter('active')} />
-        <Chip label="Draft"  active={filter === 'draft'}  onPress={() => setFilter('draft')} />
-        <Chip label="Signed" active={filter === 'signed'} onPress={() => setFilter('signed')} />
-      </ScrollView>
+      <View style={{ height: 54, paddingBottom: 12 }}>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={{ paddingHorizontal: 16, gap: 8, alignItems: 'center' }}
+        >
+          <Chip label={`All · ${counts.all}`} active={filter === 'all'} onPress={() => setFilter('all')} />
+          {counts.attention > 0 ? (
+            <Chip
+              label={`Awaiting you · ${counts.attention}`}
+              active={filter === 'attention'}
+              onPress={() => setFilter('attention')}
+            />
+          ) : null}
+          <Chip label="Active" active={filter === 'active'} onPress={() => setFilter('active')} />
+          <Chip label="Draft"  active={filter === 'draft'}  onPress={() => setFilter('draft')} />
+          <Chip label="Signed" active={filter === 'signed'} onPress={() => setFilter('signed')} />
+        </ScrollView>
+      </View>
 
       <ScrollView
         contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 24, gap: 10 }}
