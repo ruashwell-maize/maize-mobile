@@ -1,28 +1,153 @@
-import { View, Text, ScrollView } from 'react-native';
+import { useEffect, useState, useCallback } from 'react';
+import { View, Text, ScrollView, ActivityIndicator, Pressable, RefreshControl } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { router } from 'expo-router';
+import { Plus, Layers, AlertTriangle } from 'lucide-react-native';
+import { supabase } from '@/lib/supabase';
+import { COLORS } from '@/constants/theme';
+import { DashboardHeader } from '@/components/dashboard/DashboardHeader';
+import { Greeting } from '@/components/dashboard/Greeting';
+import { ProjectCard, type DashProject } from '@/components/dashboard/ProjectCard';
+import { ActivityList, type ActivityItem } from '@/components/dashboard/ActivityList';
+
+type Profile = {
+  first_name:       string;
+  last_name:        string;
+  management_style: 'ai_managed' | 'self_managed';
+};
+
+const SectionHead = ({ title, action }: { title: string; action?: { label: string; onPress: () => void } }) => (
+  <View
+    style={{
+      flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline',
+      paddingHorizontal: 20, paddingTop: 6, paddingBottom: 10,
+    }}
+  >
+    <Text style={{
+      fontSize: 13, fontWeight: '600', color: COLORS.n600,
+      textTransform: 'uppercase', letterSpacing: 1,
+    }}>
+      {title}
+    </Text>
+    {action ? (
+      <Pressable onPress={action.onPress}>
+        <Text style={{ fontSize: 13, color: COLORS.primary, fontWeight: '500' }}>{action.label}</Text>
+      </Pressable>
+    ) : null}
+  </View>
+);
 
 export default function Dashboard() {
+  const [profile, setProfile] = useState<Profile | null>(null);
+  const [projects, setProjects] = useState<DashProject[]>([]);
+  const [activity, setActivity] = useState<ActivityItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+
+  const load = useCallback(async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+    const [profileRes, projectsRes, activityRes] = await Promise.all([
+      supabase.from('profiles').select('first_name, last_name, management_style').eq('id', user.id).single(),
+      supabase
+        .from('projects')
+        .select('id, name, renovation_type, status, phase, progress_pct')
+        .in('status', ['planning', 'setup', 'active'])
+        .order('updated_at', { ascending: false })
+        .limit(5),
+      supabase
+        .from('activity_log')
+        .select('id, description, actor_type, action_type, created_at, project_id')
+        .order('created_at', { ascending: false })
+        .limit(5),
+    ]);
+    if (profileRes.data) setProfile(profileRes.data as Profile);
+    if (projectsRes.data) setProjects(projectsRes.data as DashProject[]);
+    if (activityRes.data) setActivity(activityRes.data as ActivityItem[]);
+  }, []);
+
+  useEffect(() => {
+    (async () => { await load(); setLoading(false); })();
+  }, [load]);
+
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    await load();
+    setRefreshing(false);
+  }, [load]);
+
+  const firstName = profile?.first_name ?? '';
+  const initials = (
+    (profile?.first_name?.[0] ?? '') + (profile?.last_name?.[0] ?? '')
+  ).toUpperCase() || '·';
+
+  if (loading) {
+    return (
+      <SafeAreaView className="flex-1 items-center justify-center" style={{ backgroundColor: COLORS.warmWhite }}>
+        <ActivityIndicator color={COLORS.primary} />
+      </SafeAreaView>
+    );
+  }
+
   return (
-    <SafeAreaView className="flex-1 bg-[#f7fafc]">
-      <ScrollView className="flex-1 px-5 pt-4">
-        <Text className="text-[24px] font-bold text-[#2d3748] mb-1">Good morning</Text>
-        <Text className="text-[14px] text-[#718096] mb-6">Here's your renovation overview</Text>
+    <SafeAreaView edges={['top']} className="flex-1" style={{ backgroundColor: COLORS.warmWhite }}>
+      <DashboardHeader initials={initials} />
+      <ScrollView
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={COLORS.primary} />}
+        contentContainerStyle={{ paddingBottom: 24 }}
+      >
+        <Greeting
+          firstName={firstName}
+          managementStyle={profile?.management_style ?? 'self_managed'}
+          activeCount={projects.filter(p => p.status === 'active').length}
+        />
 
-        <View className="bg-white rounded-2xl border border-[#e2e8f0] p-5 mb-4">
-          <Text className="text-[12px] font-semibold text-[#5F7C8A] uppercase tracking-wider mb-2">Active Project</Text>
-          <Text className="text-[16px] font-semibold text-[#2d3748]">No active project</Text>
-          <Text className="text-[13px] text-[#718096] mt-1">Create an estimate to get started</Text>
+        <SectionHead title="Active projects" />
+        {projects.length === 0 ? (
+          <View
+            style={{
+              marginHorizontal: 20, marginBottom: 12,
+              backgroundColor: '#fff', borderRadius: 16,
+              borderWidth: 1, borderColor: COLORS.n200, padding: 18,
+              alignItems: 'center',
+            }}
+          >
+            <AlertTriangle size={20} color={COLORS.n500} strokeWidth={2} />
+            <Text style={{ fontSize: 14, fontWeight: '600', color: COLORS.n900, marginTop: 8 }}>No active projects</Text>
+            <Text style={{ fontSize: 13, color: COLORS.n600, marginTop: 2, textAlign: 'center' }}>
+              Start with an estimate and convert it to a project when you're ready.
+            </Text>
+          </View>
+        ) : (
+          projects.map(p => <ProjectCard key={p.id} project={p} />)
+        )}
+
+        <View style={{ flexDirection: 'row', gap: 10, paddingHorizontal: 20, marginTop: 6, marginBottom: 18 }}>
+          <Pressable
+            onPress={() => router.push('/(app)/estimate')}
+            style={{
+              flex: 1, height: 48, borderRadius: 12, backgroundColor: COLORS.primary,
+              flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
+            }}
+          >
+            <Plus size={16} color="#fff" strokeWidth={2.2} />
+            <Text style={{ color: '#fff', fontWeight: '600', fontSize: 13 }}>New estimate</Text>
+          </Pressable>
+          <Pressable
+            onPress={() => router.push('/(app)/control-centre')}
+            style={{
+              flex: 1, height: 48, borderRadius: 12, backgroundColor: '#fff',
+              borderWidth: 1, borderColor: COLORS.n200,
+              flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
+            }}
+          >
+            <Layers size={16} color={COLORS.n700} strokeWidth={2} />
+            <Text style={{ color: COLORS.n700, fontWeight: '600', fontSize: 13 }}>All projects</Text>
+          </Pressable>
         </View>
 
-        <View className="bg-white rounded-2xl border border-[#e2e8f0] p-5 mb-4">
-          <Text className="text-[12px] font-semibold text-[#5F7C8A] uppercase tracking-wider mb-2">Recent Activity</Text>
-          <Text className="text-[13px] text-[#718096]">No recent activity</Text>
-        </View>
-
-        <View className="bg-white rounded-2xl border border-[#e2e8f0] p-5 mb-4">
-          <Text className="text-[12px] font-semibold text-[#5F7C8A] uppercase tracking-wider mb-2">AI Alerts</Text>
-          <Text className="text-[13px] text-[#718096]">Nothing to flag right now</Text>
-        </View>
+        <SectionHead title="Recent activity" />
+        <ActivityList items={activity} />
       </ScrollView>
     </SafeAreaView>
   );

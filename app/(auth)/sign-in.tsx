@@ -1,63 +1,143 @@
 import { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, KeyboardAvoidingView, Platform, ActivityIndicator, Alert } from 'react-native';
+import {
+  View, Text, TextInput, Pressable, KeyboardAvoidingView, Platform,
+  ActivityIndicator, ScrollView,
+} from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { supabase } from '@/lib/supabase';
+import { COLORS } from '@/constants/theme';
 
 export default function SignIn() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   async function handleSignIn() {
-    if (!email || !password) return;
+    if (!email || !password) {
+      setError('Please enter your email and password.');
+      return;
+    }
+    setError(null);
     setLoading(true);
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    const { error: authError } = await supabase.auth.signInWithPassword({ email, password });
     setLoading(false);
-    if (error) {
-      Alert.alert('Sign in failed', error.message);
+    if (authError) {
+      setError(authError.message);
     } else {
       router.replace('/(app)');
     }
   }
 
   return (
-    <KeyboardAvoidingView
-      className="flex-1 bg-[#f7fafc]"
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-    >
-      <View className="flex-1 justify-center px-8">
-        <Text className="text-[28px] font-bold text-[#2d3748] mb-2">Welcome back</Text>
-        <Text className="text-[15px] text-[#718096] mb-10">Sign in to Maize</Text>
-
-        <TextInput
-          className="bg-white border border-[#e2e8f0] rounded-xl px-4 py-3.5 text-[15px] text-[#2d3748] mb-4"
-          placeholder="Email"
-          placeholderTextColor="#a0aec0"
-          autoCapitalize="none"
-          keyboardType="email-address"
-          value={email}
-          onChangeText={setEmail}
-        />
-        <TextInput
-          className="bg-white border border-[#e2e8f0] rounded-xl px-4 py-3.5 text-[15px] text-[#2d3748] mb-6"
-          placeholder="Password"
-          placeholderTextColor="#a0aec0"
-          secureTextEntry
-          value={password}
-          onChangeText={setPassword}
-        />
-
-        <TouchableOpacity
-          className="bg-[#5F7C8A] rounded-xl py-4 items-center"
-          onPress={handleSignIn}
-          disabled={loading}
+    <SafeAreaView className="flex-1" style={{ backgroundColor: COLORS.warmWhite }}>
+      <KeyboardAvoidingView
+        className="flex-1"
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      >
+        <ScrollView
+          contentContainerStyle={{ flexGrow: 1, paddingHorizontal: 24, paddingTop: 60, paddingBottom: 40 }}
+          keyboardShouldPersistTaps="handled"
         >
-          {loading
-            ? <ActivityIndicator color="#fff" />
-            : <Text className="text-white text-[15px] font-semibold">Sign in</Text>
-          }
-        </TouchableOpacity>
-      </View>
-    </KeyboardAvoidingView>
+          <View className="items-center mb-12">
+            <View
+              style={{
+                width: 72, height: 72, borderRadius: 20,
+                backgroundColor: COLORS.primary,
+                alignItems: 'center', justifyContent: 'center',
+                marginBottom: 18,
+                shadowColor: COLORS.primary, shadowOpacity: 0.4, shadowRadius: 16, shadowOffset: { width: 0, height: 8 },
+              }}
+            >
+              <View
+                style={{
+                  width: 44, height: 44, borderRadius: 8,
+                  backgroundColor: COLORS.warmWhite,
+                  opacity: 0.95,
+                }}
+              />
+            </View>
+            <Text style={{ fontSize: 22, fontWeight: '700', color: COLORS.n900 }}>Maize</Text>
+            <Text style={{ fontSize: 13, color: COLORS.n600, marginTop: 4 }}>Renovations, run by AI.</Text>
+          </View>
+
+          <View style={{ marginBottom: 14 }}>
+            <Text style={{ fontSize: 13, fontWeight: '500', color: COLORS.n700, marginBottom: 6 }}>Email</Text>
+            <TextInput
+              style={{
+                height: 48, paddingHorizontal: 16, borderRadius: 12,
+                borderWidth: 1, borderColor: COLORS.n300, backgroundColor: '#fff',
+                fontSize: 15, color: COLORS.n900,
+              }}
+              placeholder="you@example.com"
+              placeholderTextColor={COLORS.n500}
+              autoCapitalize="none"
+              autoCorrect={false}
+              keyboardType="email-address"
+              value={email}
+              onChangeText={(t) => { setEmail(t); setError(null); }}
+            />
+          </View>
+
+          <View style={{ marginBottom: 14 }}>
+            <Text style={{ fontSize: 13, fontWeight: '500', color: COLORS.n700, marginBottom: 6 }}>Password</Text>
+            <TextInput
+              style={{
+                height: 48, paddingHorizontal: 16, borderRadius: 12,
+                borderWidth: 1, borderColor: COLORS.n300, backgroundColor: '#fff',
+                fontSize: 15, color: COLORS.n900,
+              }}
+              placeholder="••••••••"
+              placeholderTextColor={COLORS.n500}
+              secureTextEntry
+              value={password}
+              onChangeText={(t) => { setPassword(t); setError(null); }}
+            />
+          </View>
+
+          {error ? (
+            <View
+              style={{
+                backgroundColor: COLORS.dangerLight, borderColor: COLORS.danger, borderWidth: 1,
+                borderRadius: 10, padding: 12, marginBottom: 12,
+              }}
+            >
+              <Text style={{ color: COLORS.danger, fontSize: 13 }}>{error}</Text>
+            </View>
+          ) : null}
+
+          <Pressable
+            onPress={handleSignIn}
+            disabled={loading}
+            style={({ pressed }) => ({
+              height: 48, borderRadius: 12,
+              backgroundColor: pressed ? COLORS.primaryHover : COLORS.primary,
+              alignItems: 'center', justifyContent: 'center',
+              marginTop: 8, opacity: loading ? 0.85 : 1,
+            })}
+          >
+            {loading
+              ? <ActivityIndicator color="#fff" />
+              : <Text style={{ color: '#fff', fontWeight: '600', fontSize: 15 }}>Sign in</Text>
+            }
+          </Pressable>
+
+          <Pressable style={{ marginTop: 8, height: 44, alignItems: 'center', justifyContent: 'center' }}>
+            <Text style={{ color: COLORS.primary, fontWeight: '500', fontSize: 14 }}>Forgot password?</Text>
+          </Pressable>
+
+          <View className="mt-auto pt-8">
+            <Text style={{ textAlign: 'center', fontSize: 12, color: COLORS.n500, lineHeight: 18 }}>
+              By signing in you agree to our{' '}
+              <Text style={{ color: COLORS.primary, fontWeight: '500' }}>Terms</Text>
+              {' '}and{' '}
+              <Text style={{ color: COLORS.primary, fontWeight: '500' }}>Privacy Policy</Text>
+              .
+            </Text>
+          </View>
+        </ScrollView>
+      </KeyboardAvoidingView>
+    </SafeAreaView>
   );
 }

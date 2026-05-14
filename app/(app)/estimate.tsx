@@ -1,77 +1,173 @@
-import { useState, useRef } from 'react';
-import { View, Text, TextInput, TouchableOpacity, ScrollView, KeyboardAvoidingView, Platform } from 'react-native';
+import { useState, useRef, useCallback } from 'react';
+import { View, Text, ScrollView, KeyboardAvoidingView, Platform, Pressable, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { router } from 'expo-router';
+import { Sparkles, Plus, Bookmark } from 'lucide-react-native';
+import { COLORS } from '@/constants/theme';
+import { apiFetch } from '@/constants/api';
+import { supabase } from '@/lib/supabase';
+import { ChatBubble, type ChatMessage } from '@/components/estimate/ChatBubble';
+import { EstimateInput } from '@/components/estimate/EstimateInput';
 
-type Message = { role: 'user' | 'assistant'; content: string };
+const GREETING_TEXT = "Hi 👋 What are we estimating today? Tell me about your renovation — type, location, and rough size — or send a few photos and I'll get going.";
 
 export default function Estimate() {
-  const [messages, setMessages] = useState<Message[]>([
-    { role: 'assistant', content: 'Hi! I\'m Maize AI. Tell me about your renovation — what are you planning and where is the property?' },
+  const [messages, setMessages] = useState<ChatMessage[]>([
+    { id: 'g0', role: 'ai', content: GREETING_TEXT, ts: new Date() },
   ]);
-  const [input, setInput] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [readyToEstimate, setReadyToEstimate] = useState(false);
   const scrollRef = useRef<ScrollView>(null);
 
-  function handleSend() {
-    const text = input.trim();
-    if (!text) return;
-    setMessages(prev => [...prev, { role: 'user', content: text }]);
-    setInput('');
-    setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 100);
+  const scrollToEnd = useCallback(() => {
+    setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 50);
+  }, []);
+
+  const handleAddPhoto = useCallback((uri: string) => {
+    setMessages(prev => [
+      ...prev,
+      { id: `p${Date.now()}-${Math.random()}`, role: 'user', content: '', photos: [uri], ts: new Date() },
+    ]);
+    scrollToEnd();
+  }, [scrollToEnd]);
+
+  const handleSend = useCallback(async (text: string) => {
+    const userMsg: ChatMessage = { id: `u${Date.now()}`, role: 'user', content: text, ts: new Date() };
+    const draft = [...messages, userMsg];
+    setMessages(draft);
+    scrollToEnd();
+    setBusy(true);
+    try {
+      const payload = {
+        messages: draft.filter(m => !m.photos).map(m => ({ role: m.role, content: m.content })),
+      };
+      const res = await apiFetch('/api/estimator-chat', {
+        method: 'POST',
+        body:   JSON.stringify(payload),
+      });
+      if (!res.ok) throw new Error(`API ${res.status}`);
+      const data = (await res.json()) as { content?: string };
+      const aiText = data.content ?? "Sorry — I couldn't generate a response just now.";
+      setMessages(prev => [...prev, { id: `a${Date.now()}`, role: 'ai', content: aiText, ts: new Date() }]);
+      if (/enough to give you a solid estimate/i.test(aiText)) {
+        setReadyToEstimate(true);
+      }
+      scrollToEnd();
+    } catch (err) {
+      setMessages(prev => [
+        ...prev,
+        { id: `e${Date.now()}`, role: 'ai', content: 'Network hiccup — please try again in a moment.', ts: new Date() },
+      ]);
+    } finally {
+      setBusy(false);
+    }
+  }, [messages, scrollToEnd]);
+
+  async function handleConvertToProject() {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+    const { data, error } = await supabase
+      .from('projects')
+      .insert({ user_id: user.id, name: 'New project (from estimate)', status: 'planning' })
+      .select('id')
+      .single();
+    if (error) {
+      Alert.alert('Could not create project', error.message);
+      return;
+    }
+    Alert.alert('Project created', 'Refine on desktop for full project setup.');
+    router.push(`/(app)/control-centre?id=${data.id}`);
   }
 
   return (
-    <SafeAreaView className="flex-1 bg-[#f7fafc]">
-      <View className="px-5 pt-4 pb-3 border-b border-[#e2e8f0]">
-        <Text className="text-[20px] font-bold text-[#2d3748]">Cost Estimator</Text>
-        <Text className="text-[13px] text-[#718096]">Get an AI-powered estimate for your renovation</Text>
+    <SafeAreaView edges={['top']} className="flex-1" style={{ backgroundColor: COLORS.warmWhite }}>
+      <View
+        style={{
+          paddingHorizontal: 16, paddingTop: 8, paddingBottom: 10,
+          borderBottomWidth: 1, borderBottomColor: COLORS.n200,
+          flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
+        }}
+      >
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+          <View style={{
+            width: 24, height: 24, borderRadius: 12, backgroundColor: COLORS.ai,
+            alignItems: 'center', justifyContent: 'center',
+          }}>
+            <Sparkles size={12} color="#fff" strokeWidth={2.4} />
+          </View>
+          <View>
+            <Text style={{ fontSize: 18, fontWeight: '700', color: COLORS.n900, letterSpacing: -0.2 }}>
+              Maize estimate
+            </Text>
+            <Text style={{ fontSize: 11, color: COLORS.n600 }}>
+              Online · typically replies in seconds
+            </Text>
+          </View>
+        </View>
       </View>
 
       <KeyboardAvoidingView
-        className="flex-1"
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        keyboardVerticalOffset={0}
+        style={{ flex: 1 }}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
         <ScrollView
           ref={scrollRef}
-          className="flex-1 px-5 pt-4"
-          onContentSizeChange={() => scrollRef.current?.scrollToEnd({ animated: true })}
+          style={{ flex: 1 }}
+          contentContainerStyle={{ padding: 16, gap: 10 }}
+          onContentSizeChange={() => scrollRef.current?.scrollToEnd({ animated: false })}
         >
-          {messages.map((msg, i) => (
-            <View
-              key={i}
-              className={`mb-3 max-w-[85%] rounded-2xl px-4 py-3 ${
-                msg.role === 'user'
-                  ? 'self-end bg-[#5F7C8A]'
-                  : 'self-start bg-white border border-[#e2e8f0]'
-              }`}
-            >
-              <Text className={`text-[14px] ${msg.role === 'user' ? 'text-white' : 'text-[#2d3748]'}`}>
-                {msg.content}
-              </Text>
-            </View>
-          ))}
-          <View className="h-4" />
+          {messages.map(msg => <ChatBubble key={msg.id} msg={msg} />)}
+          {readyToEstimate ? <EstimateReadyCard onConvert={handleConvertToProject} /> : null}
         </ScrollView>
-
-        <View className="flex-row items-end px-4 py-3 border-t border-[#e2e8f0] bg-white">
-          <TextInput
-            className="flex-1 bg-[#f7fafc] border border-[#e2e8f0] rounded-2xl px-4 py-3 text-[14px] text-[#2d3748] max-h-24 mr-3"
-            placeholder="Describe your renovation..."
-            placeholderTextColor="#a0aec0"
-            multiline
-            value={input}
-            onChangeText={setInput}
-            returnKeyType="send"
-            onSubmitEditing={handleSend}
-          />
-          <TouchableOpacity
-            className="bg-[#5F7C8A] rounded-2xl px-4 py-3"
-            onPress={handleSend}
-          >
-            <Text className="text-white font-semibold text-[14px]">Send</Text>
-          </TouchableOpacity>
-        </View>
+        <EstimateInput busy={busy} onSend={handleSend} onAddPhoto={handleAddPhoto} />
       </KeyboardAvoidingView>
     </SafeAreaView>
+  );
+}
+
+function EstimateReadyCard({ onConvert }: { onConvert: () => void }) {
+  return (
+    <View
+      style={{
+        marginTop: 4,
+        backgroundColor: COLORS.aiLight,
+        borderWidth: 1, borderColor: '#C9D8F7',
+        borderRadius: 14, padding: 14,
+      }}
+    >
+      <Text style={{
+        fontSize: 10.5, fontWeight: '700', color: COLORS.ai,
+        textTransform: 'uppercase', letterSpacing: 0.7,
+      }}>
+        Estimate ready
+      </Text>
+      <Text style={{ fontSize: 13, color: COLORS.n700, marginTop: 4, lineHeight: 18 }}>
+        Refine on desktop for the full breakdown — or convert to a project now to start tracking.
+      </Text>
+      <View style={{ flexDirection: 'row', gap: 8, marginTop: 12 }}>
+        <Pressable
+          onPress={() => Alert.alert('Saved', 'Estimate saved.')}
+          style={{
+            flex: 1, height: 40, borderRadius: 10,
+            backgroundColor: '#fff', borderWidth: 1, borderColor: COLORS.n300,
+            flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6,
+          }}
+        >
+          <Bookmark size={14} color={COLORS.n700} strokeWidth={2} />
+          <Text style={{ fontSize: 13, fontWeight: '600', color: COLORS.n700 }}>Save</Text>
+        </Pressable>
+        <Pressable
+          onPress={onConvert}
+          style={{
+            flex: 1, height: 40, borderRadius: 10,
+            backgroundColor: COLORS.primary,
+            flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6,
+          }}
+        >
+          <Plus size={14} color="#fff" strokeWidth={2.4} />
+          <Text style={{ fontSize: 13, fontWeight: '600', color: '#fff' }}>Convert to project</Text>
+        </Pressable>
+      </View>
+    </View>
   );
 }

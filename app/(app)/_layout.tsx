@@ -1,38 +1,22 @@
 import { Tabs } from 'expo-router';
-import { View, Text } from 'react-native';
-
-type TabIconProps = { focused: boolean; icon: string; label: string };
-
-function TabIcon({ focused, icon, label }: TabIconProps) {
-  return (
-    <View className="items-center justify-center pt-1">
-      <Text style={{ fontSize: 20, color: focused ? '#5F7C8A' : '#a0aec0' }}>{icon}</Text>
-      <Text
-        style={{
-          fontSize: 10,
-          marginTop: 2,
-          color: focused ? '#5F7C8A' : '#a0aec0',
-          fontWeight: focused ? '600' : '400',
-        }}
-      >
-        {label}
-      </Text>
-    </View>
-  );
-}
+import { Home, LayoutDashboard, MessageSquare, FileText, Calculator } from 'lucide-react-native';
+import { COLORS } from '@/constants/theme';
 
 export default function AppLayout() {
   return (
     <Tabs
       screenOptions={{
         headerShown: false,
-        tabBarShowLabel: false,
+        tabBarActiveTintColor:   COLORS.primary,
+        tabBarInactiveTintColor: COLORS.n500,
+        tabBarLabelStyle: { fontSize: 10, fontWeight: '500', marginTop: -2 },
         tabBarStyle: {
           backgroundColor: '#ffffff',
-          borderTopColor: '#e2e8f0',
-          borderTopWidth: 1,
-          height: 72,
-          paddingBottom: 8,
+          borderTopColor:  COLORS.n200,
+          borderTopWidth:  1,
+          height:          84,
+          paddingTop:      6,
+          paddingBottom:   24,
         },
       }}
     >
@@ -40,37 +24,38 @@ export default function AppLayout() {
         name="index"
         options={{
           title: 'Home',
-          tabBarIcon: ({ focused }) => <TabIcon focused={focused} icon="🏠" label="Home" />,
+          tabBarIcon: ({ color, size }) => <Home          size={size ?? 22} color={color} strokeWidth={1.8} />,
         }}
       />
       <Tabs.Screen
         name="control-centre"
         options={{
-          title: 'Control Centre',
-          tabBarIcon: ({ focused }) => <TabIcon focused={focused} icon="📊" label="Projects" />,
+          title: 'Control',
+          tabBarIcon: ({ color, size }) => <LayoutDashboard size={size ?? 22} color={color} strokeWidth={1.8} />,
         }}
       />
       <Tabs.Screen
         name="communications"
         options={{
           title: 'Messages',
-          tabBarIcon: ({ focused }) => <TabIcon focused={focused} icon="💬" label="Messages" />,
+          tabBarIcon: ({ color, size }) => <MessageSquare size={size ?? 22} color={color} strokeWidth={1.8} />,
         }}
       />
       <Tabs.Screen
         name="contracts"
         options={{
           title: 'Contracts',
-          tabBarIcon: ({ focused }) => <TabIcon focused={focused} icon="📄" label="Contracts" />,
+          tabBarIcon: ({ color, size }) => <FileText      size={size ?? 22} color={color} strokeWidth={1.8} />,
         }}
       />
       <Tabs.Screen
         name="estimate"
         options={{
           title: 'Estimate',
-          tabBarIcon: ({ focused }) => <TabIcon focused={focused} icon="💡" label="Estimate" />,
+          tabBarIcon: ({ color, size }) => <Calculator    size={size ?? 22} color={color} strokeWidth={1.8} />,
         }}
       />
+      <Tabs.Screen name="settings" options={{ href: null }} />
     </Tabs>
   );
 }
