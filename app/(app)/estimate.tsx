@@ -9,10 +9,19 @@ import { apiFetch } from '@/constants/api';
 import { supabase } from '@/lib/supabase';
 import { ChatBubble, type ChatMessage } from '@/components/estimate/ChatBubble';
 import { EstimateInput } from '@/components/estimate/EstimateInput';
+import { ErrorBoundary } from '@/components/ErrorBoundary';
 
 const GREETING_TEXT = "Hi 👋 What are we estimating today? Tell me about your renovation — type, location, and rough size — or send a few photos and I'll get going.";
 
 export default function Estimate() {
+  return (
+    <ErrorBoundary screenName="Estimate">
+      <EstimateInner />
+    </ErrorBoundary>
+  );
+}
+
+function EstimateInner() {
   const tabBarHeight = useBottomTabBarHeight();
   const [messages, setMessages] = useState<ChatMessage[]>([
     { id: 'g0', role: 'ai', content: GREETING_TEXT, ts: new Date() },
@@ -22,7 +31,13 @@ export default function Estimate() {
   const scrollRef = useRef<ScrollView>(null);
 
   const scrollToEnd = useCallback(() => {
-    setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 50);
+    requestAnimationFrame(() => {
+      try {
+        scrollRef.current?.scrollToEnd({ animated: false });
+      } catch (e) {
+        console.error('[estimate] scrollToEnd failed:', e);
+      }
+    });
   }, []);
 
   const handleAddPhoto = useCallback((uri: string) => {
@@ -34,8 +49,8 @@ export default function Estimate() {
   }, [scrollToEnd]);
 
   const handleSend = useCallback(async (text: string) => {
-    Keyboard.dismiss();
     try {
+      try { Keyboard.dismiss(); } catch (e) { console.error('[estimate] Keyboard.dismiss failed:', e); }
       const userMsg: ChatMessage = { id: `u${Date.now()}`, role: 'user', content: text, ts: new Date() };
       const draft = [...messages, userMsg];
       setMessages(draft);
@@ -152,7 +167,6 @@ export default function Estimate() {
           ref={scrollRef}
           style={{ flex: 1 }}
           contentContainerStyle={{ padding: 16, gap: 10 }}
-          onContentSizeChange={() => scrollRef.current?.scrollToEnd({ animated: false })}
           keyboardShouldPersistTaps="handled"
           keyboardDismissMode="on-drag"
         >
