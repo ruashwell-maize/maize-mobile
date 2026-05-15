@@ -68,10 +68,15 @@ function EstimateInner() {
           body:   JSON.stringify(payload),
         });
       } catch (netErr) {
-        console.error('[estimate] network error:', netErr);
+        const e = netErr as Error & { cause?: unknown };
+        console.error('[estimate] network error name:    ', e?.name);
+        console.error('[estimate] network error message: ', e?.message);
+        console.error('[estimate] network error toString:', String(netErr));
+        console.error('[estimate] network error cause:   ', JSON.stringify(e?.cause));
+        console.error('[estimate] network error stack:   ', e?.stack);
         setMessages(prev => [
           ...prev,
-          { id: `e${Date.now()}`, role: 'ai', content: 'Network hiccup — please try again in a moment.', ts: new Date() },
+          { id: `e${Date.now()}`, role: 'ai', content: `Network error: ${e?.message ?? String(netErr)}`, ts: new Date() },
         ]);
         return;
       }
