@@ -49,8 +49,12 @@ export default function ControlCentre() {
         .order('due_date', { ascending: true, nullsFirst: false })
         .limit(8),
     ]);
+    if (projectRes.error) console.error('[cc] project fetch error:', projectRes.error.message);
     if (projectRes.data) setProject(projectRes.data as Project);
+    if (tasksRes.error) console.error('[cc] tasks fetch error:', tasksRes.error.message);
     setTasks((tasksRes.data ?? []) as Task[]);
+    if (milestonesRes.error) console.error('[cc] milestones fetch error:', milestonesRes.error.message);
+    else console.log(`[cc] milestones loaded: ${(milestonesRes.data ?? []).length} rows for project ${id}`);
     setMilestones((milestonesRes.data ?? []) as Milestone[]);
   }, []);
 
