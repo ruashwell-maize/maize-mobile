@@ -96,17 +96,6 @@ export default function SignIn() {
             />
           </View>
 
-          {error ? (
-            <View
-              style={{
-                backgroundColor: COLORS.dangerLight, borderColor: COLORS.danger, borderWidth: 1,
-                borderRadius: 10, padding: 12, marginBottom: 12,
-              }}
-            >
-              <Text style={{ color: COLORS.danger, fontSize: 13 }}>{error}</Text>
-            </View>
-          ) : null}
-
           <Pressable
             onPress={handleSignIn}
             disabled={loading}
@@ -122,6 +111,17 @@ export default function SignIn() {
               : <Text style={{ color: '#fff', fontWeight: '600', fontSize: 15 }}>Sign in</Text>
             }
           </Pressable>
+
+          {error ? (
+            <View
+              style={{
+                backgroundColor: COLORS.dangerLight, borderColor: COLORS.danger, borderWidth: 1,
+                borderRadius: 10, padding: 12, marginTop: 12,
+              }}
+            >
+              <Text style={{ color: COLORS.danger, fontSize: 13 }}>{error}</Text>
+            </View>
+          ) : null}
 
           <Pressable style={{ marginTop: 8, height: 44, alignItems: 'center', justifyContent: 'center' }}>
             <Text style={{ color: COLORS.primary, fontWeight: '500', fontSize: 14 }}>Forgot password?</Text>
