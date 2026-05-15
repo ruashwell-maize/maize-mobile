@@ -58,6 +58,7 @@ export default function Dashboard() {
       supabase
         .from('activity_log')
         .select('id, description, actor_type, action_type, created_at, project_id')
+        .eq('user_id', user.id)
         .order('created_at', { ascending: false })
         .limit(5),
     ]);
