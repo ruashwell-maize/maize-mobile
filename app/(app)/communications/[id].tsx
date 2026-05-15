@@ -1,7 +1,6 @@
 import { useEffect, useState, useCallback } from 'react';
-import { View, Text, ScrollView, ActivityIndicator, Pressable, KeyboardAvoidingView, Keyboard, Linking, Alert } from 'react-native';
+import { View, Text, ScrollView, ActivityIndicator, Pressable, KeyboardAvoidingView, Platform, Keyboard, Linking, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs';
 import { useLocalSearchParams, router } from 'expo-router';
 import * as Clipboard from 'expo-clipboard';
 import { ChevronLeft } from 'lucide-react-native';
@@ -24,7 +23,6 @@ type Conversation = {
 
 export default function ConversationDetail() {
   const { id } = useLocalSearchParams<{ id: string }>();
-  const tabBarHeight = useBottomTabBarHeight();
   const [conv, setConv] = useState<Conversation | null>(null);
   const [thread, setThread] = useState<Message[]>([]);
   const [projectName, setProjectName] = useState<string | null>(null);
@@ -108,7 +106,7 @@ export default function ConversationDetail() {
 
   if (loading) {
     return (
-      <SafeAreaView className="flex-1 items-center justify-center" style={{ backgroundColor: COLORS.warmWhite }}>
+      <SafeAreaView style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: COLORS.warmWhite }}>
         <ActivityIndicator color={COLORS.primary} />
       </SafeAreaView>
     );
@@ -116,54 +114,55 @@ export default function ConversationDetail() {
 
   if (!conv) {
     return (
-      <SafeAreaView className="flex-1 items-center justify-center" style={{ backgroundColor: COLORS.warmWhite }}>
+      <SafeAreaView style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: COLORS.warmWhite }}>
         <Text style={{ color: COLORS.n700 }}>Conversation not found.</Text>
       </SafeAreaView>
     );
   }
 
+  // KeyboardAvoidingView wraps the entire screen (outermost) so the Composer
+  // is reliably pushed above the keyboard regardless of navigator nesting depth.
   return (
-    <SafeAreaView edges={['top']} className="flex-1" style={{ backgroundColor: COLORS.warmWhite }}>
-      <View
-        style={{
-          flexDirection: 'row', alignItems: 'center', gap: 12,
-          paddingHorizontal: 14, paddingTop: 8, paddingBottom: 12,
-          borderBottomWidth: 1, borderBottomColor: COLORS.n200,
-        }}
-      >
-        <Pressable
-          onPress={() => router.back()}
+    <KeyboardAvoidingView
+      style={{ flex: 1 }}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+    >
+      <SafeAreaView edges={['top']} style={{ flex: 1, backgroundColor: COLORS.warmWhite }}>
+        <View
           style={{
-            width: 36, height: 36, borderRadius: 18,
-            backgroundColor: '#fff', borderWidth: 1, borderColor: COLORS.n200,
-            alignItems: 'center', justifyContent: 'center',
+            flexDirection: 'row', alignItems: 'center', gap: 12,
+            paddingHorizontal: 14, paddingTop: 8, paddingBottom: 12,
+            borderBottomWidth: 1, borderBottomColor: COLORS.n200,
           }}
         >
-          <ChevronLeft size={18} color={COLORS.n700} strokeWidth={2.2} />
-        </Pressable>
-        <View style={{ flex: 1 }}>
-          <Text style={{ fontSize: 15, fontWeight: '600', color: COLORS.n900 }} numberOfLines={1}>
-            {conv.contractor_name}{conv.contractor_company ? ` · ${conv.contractor_company}` : ''}
-          </Text>
-          {projectName ? (
-            <View
-              style={{
-                alignSelf: 'flex-start',
-                backgroundColor: COLORS.primaryLight,
-                paddingHorizontal: 8, paddingVertical: 2, borderRadius: 999, marginTop: 2,
-              }}
-            >
-              <Text style={{ fontSize: 10.5, fontWeight: '600', color: COLORS.primary }}>{projectName}</Text>
-            </View>
-          ) : null}
+          <Pressable
+            onPress={() => router.back()}
+            style={{
+              width: 36, height: 36, borderRadius: 18,
+              backgroundColor: '#fff', borderWidth: 1, borderColor: COLORS.n200,
+              alignItems: 'center', justifyContent: 'center',
+            }}
+          >
+            <ChevronLeft size={18} color={COLORS.n700} strokeWidth={2.2} />
+          </Pressable>
+          <View style={{ flex: 1 }}>
+            <Text style={{ fontSize: 15, fontWeight: '600', color: COLORS.n900 }} numberOfLines={1}>
+              {conv.contractor_name}{conv.contractor_company ? ` · ${conv.contractor_company}` : ''}
+            </Text>
+            {projectName ? (
+              <View
+                style={{
+                  alignSelf: 'flex-start',
+                  backgroundColor: COLORS.primaryLight,
+                  paddingHorizontal: 8, paddingVertical: 2, borderRadius: 999, marginTop: 2,
+                }}
+              >
+                <Text style={{ fontSize: 10.5, fontWeight: '600', color: COLORS.primary }}>{projectName}</Text>
+              </View>
+            ) : null}
+          </View>
         </View>
-      </View>
 
-      <KeyboardAvoidingView
-        style={{ flex: 1 }}
-        behavior="padding"
-        keyboardVerticalOffset={tabBarHeight}
-      >
         <ScrollView
           contentContainerStyle={{ paddingBottom: 16 }}
           style={{ flex: 1, backgroundColor: COLORS.warmWhite }}
@@ -172,13 +171,14 @@ export default function ConversationDetail() {
         >
           <MessageThread messages={thread} />
         </ScrollView>
+
         <Composer
           defaultChannel={conv.channel === 'email' ? 'email' : 'whatsapp'}
           onSaveDraft={handleSaveDraft}
           onSend={handleSend}
           onRequestDraft={handleRequestDraft}
         />
-      </KeyboardAvoidingView>
-    </SafeAreaView>
+      </SafeAreaView>
+    </KeyboardAvoidingView>
   );
 }
