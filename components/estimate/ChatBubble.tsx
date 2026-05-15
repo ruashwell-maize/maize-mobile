@@ -3,17 +3,28 @@ import Markdown from 'react-native-markdown-display';
 import { Sparkles } from 'lucide-react-native';
 import { COLORS } from '@/constants/theme';
 
+// react-native-markdown-display uses shallow style merge — overrides REPLACE
+// the default style object entirely. So every block-level style must include
+// the library's layout flags (flexDirection: row, flexWrap: wrap, width: '100%')
+// or text won't wrap and inline children stack into a column.
 const AI_MD_STYLES = {
   body:        { fontSize: 14, color: COLORS.n900, lineHeight: 20 },
-  paragraph:   { marginTop: 0, marginBottom: 6 },
+  paragraph:   {
+    marginTop: 0, marginBottom: 6,
+    flexDirection: 'row' as const,
+    flexWrap:      'wrap' as const,
+    alignItems:    'flex-start' as const,
+    justifyContent:'flex-start' as const,
+    width:         '100%' as const,
+  },
   strong:      { fontWeight: '700' as const, color: COLORS.n900 },
   em:          { fontStyle: 'italic' as const },
-  heading1:    { fontSize: 16, fontWeight: '700' as const, color: COLORS.n900, marginTop: 4, marginBottom: 4 },
-  heading2:    { fontSize: 15, fontWeight: '700' as const, color: COLORS.n900, marginTop: 4, marginBottom: 4 },
-  heading3:    { fontSize: 14, fontWeight: '700' as const, color: COLORS.n900, marginTop: 4, marginBottom: 4 },
+  heading1:    { fontSize: 16, fontWeight: '700' as const, color: COLORS.n900, marginTop: 4, marginBottom: 4, flexDirection: 'row' as const, flexWrap: 'wrap' as const },
+  heading2:    { fontSize: 15, fontWeight: '700' as const, color: COLORS.n900, marginTop: 4, marginBottom: 4, flexDirection: 'row' as const, flexWrap: 'wrap' as const },
+  heading3:    { fontSize: 14, fontWeight: '700' as const, color: COLORS.n900, marginTop: 4, marginBottom: 4, flexDirection: 'row' as const, flexWrap: 'wrap' as const },
   bullet_list: { marginTop: 2, marginBottom: 2 },
   ordered_list:{ marginTop: 2, marginBottom: 2 },
-  list_item:   { marginBottom: 2 },
+  list_item:   { marginBottom: 2, flexDirection: 'row' as const, justifyContent: 'flex-start' as const },
   code_inline: { backgroundColor: COLORS.n100, color: COLORS.n900, paddingHorizontal: 4, borderRadius: 4, fontSize: 13 },
   link:        { color: COLORS.primary, textDecorationLine: 'underline' as const },
 };
