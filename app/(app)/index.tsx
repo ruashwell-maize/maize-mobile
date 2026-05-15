@@ -48,7 +48,7 @@ export default function Dashboard() {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
     const [profileRes, projectsRes, activityRes] = await Promise.all([
-      supabase.from('profiles').select('first_name, last_name, management_style').eq('id', user.id).single(),
+      supabase.from('profiles').select('first_name, last_name, management_style').eq('id', user.id).maybeSingle(),
       supabase
         .from('projects')
         .select('id, name, renovation_type, status, phase, progress_pct')
@@ -61,8 +61,11 @@ export default function Dashboard() {
         .order('created_at', { ascending: false })
         .limit(5),
     ]);
+    if (profileRes.error) console.error('[dashboard] profile fetch error:', profileRes.error.message);
     if (profileRes.data) setProfile(profileRes.data as Profile);
+    if (projectsRes.error) console.error('[dashboard] projects fetch error:', projectsRes.error.message);
     if (projectsRes.data) setProjects(projectsRes.data as DashProject[]);
+    if (activityRes.error) console.error('[dashboard] activity fetch error:', activityRes.error.message);
     if (activityRes.data) setActivity(activityRes.data as ActivityItem[]);
   }, []);
 

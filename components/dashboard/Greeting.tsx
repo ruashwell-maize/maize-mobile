@@ -21,7 +21,7 @@ function todayLabel(): string {
 export function Greeting({ firstName, managementStyle, activeCount }: Props) {
   return (
     <View style={{ paddingHorizontal: 20, paddingTop: 8, paddingBottom: 14 }}>
-      <Text style={{ fontSize: 24, fontWeight: '700', color: COLORS.n900, letterSpacing: -0.3 }}>
+      <Text style={{ fontSize: 24, fontWeight: '700', color: COLORS.n900, letterSpacing: -0.3, lineHeight: 30 }}>
         {timeOfDay()}{firstName ? `, ${firstName}.` : '.'}
       </Text>
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 6 }}>
