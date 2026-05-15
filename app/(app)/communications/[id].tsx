@@ -172,14 +172,12 @@ export default function ConversationDetail() {
         >
           <MessageThread messages={thread} />
         </ScrollView>
-        <View style={{ paddingBottom: tabBarHeight }}>
-          <Composer
-            defaultChannel={conv.channel === 'email' ? 'email' : 'whatsapp'}
-            onSaveDraft={handleSaveDraft}
-            onSend={handleSend}
-            onRequestDraft={handleRequestDraft}
-          />
-        </View>
+        <Composer
+          defaultChannel={conv.channel === 'email' ? 'email' : 'whatsapp'}
+          onSaveDraft={handleSaveDraft}
+          onSend={handleSend}
+          onRequestDraft={handleRequestDraft}
+        />
       </KeyboardAvoidingView>
     </SafeAreaView>
   );

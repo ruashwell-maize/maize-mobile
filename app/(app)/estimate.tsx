@@ -28,7 +28,13 @@ function EstimateInner() {
   ]);
   const [busy, setBusy] = useState(false);
   const [readyToEstimate, setReadyToEstimate] = useState(false);
+  const [toast, setToast] = useState<string | null>(null);
   const scrollRef = useRef<ScrollView>(null);
+
+  const showToast = useCallback((message: string) => {
+    setToast(message);
+    setTimeout(() => setToast(null), 2000);
+  }, []);
 
   const scrollToEnd = useCallback(() => {
     requestAnimationFrame(() => {
@@ -176,17 +182,40 @@ function EstimateInner() {
           keyboardDismissMode="on-drag"
         >
           {messages.map(msg => <ChatBubble key={msg.id} msg={msg} />)}
-          {readyToEstimate ? <EstimateReadyCard onConvert={handleConvertToProject} /> : null}
+          {readyToEstimate ? (
+            <EstimateReadyCard
+              onConvert={handleConvertToProject}
+              onSave={() => showToast('Estimate saved')}
+            />
+          ) : null}
         </ScrollView>
-        <View style={{ paddingBottom: tabBarHeight }}>
-          <EstimateInput busy={busy} onSend={handleSend} onAddPhoto={handleAddPhoto} />
-        </View>
+        <EstimateInput busy={busy} onSend={handleSend} onAddPhoto={handleAddPhoto} />
       </KeyboardAvoidingView>
+
+      {toast ? (
+        <View
+          pointerEvents="none"
+          style={{
+            position: 'absolute', top: 80, left: 0, right: 0,
+            alignItems: 'center', zIndex: 1000,
+          }}
+        >
+          <View
+            style={{
+              backgroundColor: COLORS.n900,
+              paddingHorizontal: 16, paddingVertical: 10, borderRadius: 999,
+              shadowColor: '#000', shadowOpacity: 0.2, shadowRadius: 12, shadowOffset: { width: 0, height: 4 },
+            }}
+          >
+            <Text style={{ color: '#fff', fontSize: 13, fontWeight: '600' }}>{toast}</Text>
+          </View>
+        </View>
+      ) : null}
     </SafeAreaView>
   );
 }
 
-function EstimateReadyCard({ onConvert }: { onConvert: () => void }) {
+function EstimateReadyCard({ onConvert, onSave }: { onConvert: () => void; onSave: () => void }) {
   return (
     <View
       style={{
@@ -207,7 +236,7 @@ function EstimateReadyCard({ onConvert }: { onConvert: () => void }) {
       </Text>
       <View style={{ flexDirection: 'row', gap: 8, marginTop: 12 }}>
         <Pressable
-          onPress={() => Alert.alert('Saved', 'Estimate saved.')}
+          onPress={onSave}
           style={{
             flex: 1, height: 40, borderRadius: 10,
             backgroundColor: '#fff', borderWidth: 1, borderColor: COLORS.n300,
