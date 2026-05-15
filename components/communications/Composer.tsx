@@ -31,7 +31,6 @@ export function Composer({ defaultChannel, onSaveDraft, onSend, onRequestDraft }
   return (
     <View
       style={{
-        position: 'absolute', left: 0, right: 0, bottom: 0,
         backgroundColor: '#fff', borderTopWidth: 1, borderTopColor: COLORS.n200,
         padding: 12,
       }}

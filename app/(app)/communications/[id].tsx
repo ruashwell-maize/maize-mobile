@@ -162,7 +162,7 @@ export default function ConversationDetail() {
         keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
       >
         <ScrollView
-          contentContainerStyle={{ paddingBottom: 280 }}
+          contentContainerStyle={{ paddingBottom: 16 }}
           style={{ flex: 1, backgroundColor: COLORS.warmWhite }}
         >
           <MessageThread messages={thread} />
