@@ -99,12 +99,12 @@ export default function SignIn() {
           <Pressable
             onPress={handleSignIn}
             disabled={loading}
-            style={({ pressed }) => ({
+            style={{
               height: 48, borderRadius: 12,
-              backgroundColor: pressed ? COLORS.primaryHover : COLORS.primary,
+              backgroundColor: '#5F7C8A',
               alignItems: 'center', justifyContent: 'center',
-              marginTop: 8, opacity: loading ? 0.85 : 1,
-            })}
+              marginTop: 8,
+            }}
           >
             {loading
               ? <ActivityIndicator color="#fff" />
