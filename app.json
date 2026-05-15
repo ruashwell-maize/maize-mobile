@@ -30,7 +30,14 @@
     "scheme": "maize-mobile",
     "plugins": [
       "expo-router",
-      "expo-secure-store"
+      "expo-secure-store",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Maize uses your photos to estimate renovation costs from images of your space.",
+          "cameraPermission": "Maize uses the camera to capture images of your space for renovation estimates."
+        }
+      ]
     ]
   }
 }

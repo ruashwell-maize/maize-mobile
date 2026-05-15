@@ -1,6 +1,6 @@
 import { supabase } from '@/lib/supabase';
 
-export const API_BASE_URL = 'https://bemaize.com';
+export const API_BASE_URL = 'https://www.bemaize.com';
 
 export async function getAuthHeaders(): Promise<Record<string, string>> {
   const { data: { session } } = await supabase.auth.getSession();
