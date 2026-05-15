@@ -53,21 +53,29 @@ export default function ContractDetail() {
 
   const load = useCallback(async () => {
     if (!id) return;
-    const [contractRes, msRes] = await Promise.all([
-      supabase.from('contracts')
-        .select('id, title, status, total_value, start_date, end_date, signed_at, scope_of_work, warranty_period_months, special_conditions, project_id')
-        .eq('id', id).single(),
-      supabase.from('payment_milestones')
-        .select('id, name, amount, status, due_date')
-        .eq('contract_id', id)
-        .order('due_date', { ascending: true, nullsFirst: false }),
-    ]);
+    const contractRes = await supabase.from('contracts')
+      .select('id, title, status, total_value, start_date, end_date, signed_at, scope_of_work, warranty_period_months, special_conditions, project_id')
+      .eq('id', id).single();
     if (contractRes.data) {
       setContract(contractRes.data as Contract);
       const { data: p } = await supabase.from('projects').select('name').eq('id', contractRes.data.project_id).single();
       setProjectName((p as { name?: string } | null)?.name ?? null);
     }
-    setMilestones(((msRes.data ?? []) as Milestone[]));
+    // contract_id is nullable on payment_milestones — milestones created at the project level
+    // have contract_id = null. Try contract_id first, fall back to project_id.
+    const msRes = await supabase.from('payment_milestones')
+      .select('id, name, amount, status, due_date')
+      .eq('contract_id', id)
+      .order('due_date', { ascending: true, nullsFirst: false });
+    if ((msRes.data ?? []).length > 0) {
+      setMilestones(msRes.data as Milestone[]);
+    } else if (contractRes.data?.project_id) {
+      const { data: projectMs } = await supabase.from('payment_milestones')
+        .select('id, name, amount, status, due_date')
+        .eq('project_id', contractRes.data.project_id)
+        .order('due_date', { ascending: true, nullsFirst: false });
+      setMilestones((projectMs ?? []) as Milestone[]);
+    }
   }, [id]);
 
   useEffect(() => {
