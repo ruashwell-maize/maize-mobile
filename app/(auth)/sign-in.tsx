@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import {
-  View, Text, TextInput, Pressable, KeyboardAvoidingView, Platform,
+  View, Text, TextInput, Pressable, KeyboardAvoidingView,
   ActivityIndicator, ScrollView,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -34,13 +34,13 @@ export default function SignIn() {
     <SafeAreaView className="flex-1" style={{ backgroundColor: COLORS.warmWhite }}>
       <KeyboardAvoidingView
         className="flex-1"
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        behavior="padding"
       >
         <ScrollView
-          contentContainerStyle={{ flexGrow: 1, paddingHorizontal: 24, paddingTop: 60, paddingBottom: 40 }}
+          contentContainerStyle={{ paddingHorizontal: 24, paddingTop: 52, paddingBottom: 32 }}
           keyboardShouldPersistTaps="handled"
         >
-          <View className="items-center mb-12">
+          <View style={{ alignItems: 'center', marginBottom: 32 }}>
             <View
               style={{
                 width: 72, height: 72, borderRadius: 20,
@@ -127,7 +127,7 @@ export default function SignIn() {
             <Text style={{ color: COLORS.primary, fontWeight: '500', fontSize: 14 }}>Forgot password?</Text>
           </Pressable>
 
-          <View className="mt-auto pt-8">
+          <View style={{ paddingTop: 24 }}>
             <Text style={{ textAlign: 'center', fontSize: 12, color: COLORS.n500, lineHeight: 18 }}>
               By signing in you agree to our{' '}
               <Text style={{ color: COLORS.primary, fontWeight: '500' }}>Terms</Text>
