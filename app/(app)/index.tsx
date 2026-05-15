@@ -67,6 +67,10 @@ export default function Dashboard() {
     if (projectsRes.error) console.error('[dashboard] projects fetch error:', projectsRes.error.message);
     if (projectsRes.data) setProjects(projectsRes.data as DashProject[]);
     if (activityRes.error) console.error('[dashboard] activity fetch error:', activityRes.error.message);
+    console.log(
+      `[dashboard] activity for user ${user.id}: ${(activityRes.data ?? []).length} rows`,
+      activityRes.data,
+    );
     if (activityRes.data) setActivity(activityRes.data as ActivityItem[]);
   }, []);
 

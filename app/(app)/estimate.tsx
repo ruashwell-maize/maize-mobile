@@ -1,6 +1,7 @@
 import { useState, useRef, useCallback } from 'react';
-import { View, Text, ScrollView, KeyboardAvoidingView, Platform, Pressable, Alert } from 'react-native';
+import { View, Text, ScrollView, KeyboardAvoidingView, Keyboard, Pressable, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs';
 import { router } from 'expo-router';
 import { Sparkles, Plus, Bookmark } from 'lucide-react-native';
 import { COLORS } from '@/constants/theme';
@@ -12,6 +13,7 @@ import { EstimateInput } from '@/components/estimate/EstimateInput';
 const GREETING_TEXT = "Hi 👋 What are we estimating today? Tell me about your renovation — type, location, and rough size — or send a few photos and I'll get going.";
 
 export default function Estimate() {
+  const tabBarHeight = useBottomTabBarHeight();
   const [messages, setMessages] = useState<ChatMessage[]>([
     { id: 'g0', role: 'ai', content: GREETING_TEXT, ts: new Date() },
   ]);
@@ -32,21 +34,55 @@ export default function Estimate() {
   }, [scrollToEnd]);
 
   const handleSend = useCallback(async (text: string) => {
-    const userMsg: ChatMessage = { id: `u${Date.now()}`, role: 'user', content: text, ts: new Date() };
-    const draft = [...messages, userMsg];
-    setMessages(draft);
-    scrollToEnd();
-    setBusy(true);
+    Keyboard.dismiss();
     try {
+      const userMsg: ChatMessage = { id: `u${Date.now()}`, role: 'user', content: text, ts: new Date() };
+      const draft = [...messages, userMsg];
+      setMessages(draft);
+      scrollToEnd();
+      setBusy(true);
+
       const payload = {
         messages: draft.filter(m => !m.photos).map(m => ({ role: m.role, content: m.content })),
       };
-      const res = await apiFetch('/api/estimator-chat', {
-        method: 'POST',
-        body:   JSON.stringify(payload),
-      });
-      if (!res.ok) throw new Error(`API ${res.status}`);
-      const data = (await res.json()) as { content?: string };
+
+      let res: Response;
+      try {
+        res = await apiFetch('/api/estimator-chat', {
+          method: 'POST',
+          body:   JSON.stringify(payload),
+        });
+      } catch (netErr) {
+        console.error('[estimate] network error:', netErr);
+        setMessages(prev => [
+          ...prev,
+          { id: `e${Date.now()}`, role: 'ai', content: 'Network hiccup — please try again in a moment.', ts: new Date() },
+        ]);
+        return;
+      }
+
+      if (!res.ok) {
+        const bodyText = await res.text().catch(() => '<unreadable>');
+        console.error(`[estimate] API ${res.status}:`, bodyText.slice(0, 200));
+        setMessages(prev => [
+          ...prev,
+          { id: `e${Date.now()}`, role: 'ai', content: `Server error (${res.status}). Please try again.`, ts: new Date() },
+        ]);
+        return;
+      }
+
+      let data: { content?: string };
+      try {
+        data = (await res.json()) as { content?: string };
+      } catch (parseErr) {
+        console.error('[estimate] JSON parse error:', parseErr);
+        setMessages(prev => [
+          ...prev,
+          { id: `e${Date.now()}`, role: 'ai', content: 'Got an unexpected response from the server.', ts: new Date() },
+        ]);
+        return;
+      }
+
       const aiText = data.content ?? "Sorry — I couldn't generate a response just now.";
       setMessages(prev => [...prev, { id: `a${Date.now()}`, role: 'ai', content: aiText, ts: new Date() }]);
       if (/enough to give you a solid estimate/i.test(aiText)) {
@@ -54,9 +90,10 @@ export default function Estimate() {
       }
       scrollToEnd();
     } catch (err) {
+      console.error('[estimate] unexpected error in handleSend:', err);
       setMessages(prev => [
         ...prev,
-        { id: `e${Date.now()}`, role: 'ai', content: 'Network hiccup — please try again in a moment.', ts: new Date() },
+        { id: `e${Date.now()}`, role: 'ai', content: 'Something went wrong. Please try again.', ts: new Date() },
       ]);
     } finally {
       setBusy(false);
@@ -108,18 +145,23 @@ export default function Estimate() {
 
       <KeyboardAvoidingView
         style={{ flex: 1 }}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        behavior="padding"
+        keyboardVerticalOffset={tabBarHeight}
       >
         <ScrollView
           ref={scrollRef}
           style={{ flex: 1 }}
           contentContainerStyle={{ padding: 16, gap: 10 }}
           onContentSizeChange={() => scrollRef.current?.scrollToEnd({ animated: false })}
+          keyboardShouldPersistTaps="handled"
+          keyboardDismissMode="on-drag"
         >
           {messages.map(msg => <ChatBubble key={msg.id} msg={msg} />)}
           {readyToEstimate ? <EstimateReadyCard onConvert={handleConvertToProject} /> : null}
         </ScrollView>
-        <EstimateInput busy={busy} onSend={handleSend} onAddPhoto={handleAddPhoto} />
+        <View style={{ paddingBottom: tabBarHeight }}>
+          <EstimateInput busy={busy} onSend={handleSend} onAddPhoto={handleAddPhoto} />
+        </View>
       </KeyboardAvoidingView>
     </SafeAreaView>
   );

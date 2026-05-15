@@ -1,6 +1,7 @@
 import { useEffect, useState, useCallback } from 'react';
-import { View, Text, ScrollView, ActivityIndicator, Pressable, KeyboardAvoidingView, Platform, Linking, Alert } from 'react-native';
+import { View, Text, ScrollView, ActivityIndicator, Pressable, KeyboardAvoidingView, Keyboard, Linking, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs';
 import { useLocalSearchParams, router } from 'expo-router';
 import * as Clipboard from 'expo-clipboard';
 import { ChevronLeft } from 'lucide-react-native';
@@ -23,6 +24,7 @@ type Conversation = {
 
 export default function ConversationDetail() {
   const { id } = useLocalSearchParams<{ id: string }>();
+  const tabBarHeight = useBottomTabBarHeight();
   const [conv, setConv] = useState<Conversation | null>(null);
   const [thread, setThread] = useState<Message[]>([]);
   const [projectName, setProjectName] = useState<string | null>(null);
@@ -100,6 +102,7 @@ export default function ConversationDetail() {
       const url = `mailto:?subject=${subject}&body=${encodeURIComponent(body)}`;
       Linking.openURL(url);
     }
+    Keyboard.dismiss();
     await load();
   }
 
@@ -158,21 +161,25 @@ export default function ConversationDetail() {
 
       <KeyboardAvoidingView
         style={{ flex: 1 }}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
+        behavior="padding"
+        keyboardVerticalOffset={tabBarHeight}
       >
         <ScrollView
           contentContainerStyle={{ paddingBottom: 16 }}
           style={{ flex: 1, backgroundColor: COLORS.warmWhite }}
+          keyboardShouldPersistTaps="handled"
+          keyboardDismissMode="on-drag"
         >
           <MessageThread messages={thread} />
         </ScrollView>
-        <Composer
-          defaultChannel={conv.channel === 'email' ? 'email' : 'whatsapp'}
-          onSaveDraft={handleSaveDraft}
-          onSend={handleSend}
-          onRequestDraft={handleRequestDraft}
-        />
+        <View style={{ paddingBottom: tabBarHeight }}>
+          <Composer
+            defaultChannel={conv.channel === 'email' ? 'email' : 'whatsapp'}
+            onSaveDraft={handleSaveDraft}
+            onSend={handleSend}
+            onRequestDraft={handleRequestDraft}
+          />
+        </View>
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
