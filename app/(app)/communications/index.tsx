@@ -115,22 +115,23 @@ export default function CommunicationsList() {
       {/* FAB */}
       <Pressable
         onPress={() => setModalVisible(true)}
-        style={({ pressed }) => ({
+        style={{
           position: 'absolute',
           bottom: 24,
           right: 20,
           width: 56,
           height: 56,
           borderRadius: 28,
-          backgroundColor: pressed ? COLORS.primaryHover : COLORS.primary,
+          backgroundColor: COLORS.primary,
           alignItems: 'center',
           justifyContent: 'center',
           shadowColor: '#000',
           shadowOffset: { width: 0, height: 4 },
-          shadowOpacity: 0.18,
+          shadowOpacity: 0.22,
           shadowRadius: 8,
           elevation: 6,
-        })}
+          zIndex: 10,
+        }}
       >
         <Plus size={24} color="#fff" strokeWidth={2.5} />
       </Pressable>
@@ -226,7 +227,7 @@ function NewMessageModal({ visible, projects, onClose, onCreated }: NewMessageMo
 
           <ScrollView
             style={{ flex: 1 }}
-            contentContainerStyle={{ padding: 20, gap: 20 }}
+            contentContainerStyle={{ padding: 20, gap: 20, paddingBottom: 40 }}
             keyboardShouldPersistTaps="handled"
           >
             {/* Contractor name */}
@@ -298,28 +299,24 @@ function NewMessageModal({ visible, projects, onClose, onCreated }: NewMessageMo
                 ))}
               </View>
             </Field>
-          </ScrollView>
 
-          {/* Footer CTA */}
-          <View style={{
-            paddingHorizontal: 20, paddingBottom: Platform.OS === 'ios' ? 32 : 20, paddingTop: 12,
-            borderTopWidth: 1, borderTopColor: COLORS.n200, backgroundColor: COLORS.warmWhite,
-          }}>
+            {/* CTA — inside the scroll so it's never squashed by flex layout */}
             <Pressable
               onPress={handleStart}
               disabled={saving}
-              style={({ pressed }) => ({
-                backgroundColor: pressed || saving ? COLORS.primaryHover : COLORS.primary,
+              style={{
+                backgroundColor: saving ? COLORS.primaryHover : COLORS.primary,
                 borderRadius: 12,
                 paddingVertical: 15,
                 alignItems: 'center',
-              })}
+                marginTop: 8,
+              }}
             >
               <Text style={{ color: '#fff', fontWeight: '600', fontSize: 15 }}>
                 {saving ? 'Starting…' : 'Start conversation'}
               </Text>
             </Pressable>
-          </View>
+          </ScrollView>
         </SafeAreaView>
       </KeyboardAvoidingView>
     </Modal>
