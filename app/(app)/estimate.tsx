@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback } from 'react';
+import { useState, useRef, useCallback, useEffect } from 'react';
 import { View, Text, ScrollView, KeyboardAvoidingView, Keyboard, Pressable, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs';
@@ -11,7 +11,10 @@ import { ChatBubble, type ChatMessage } from '@/components/estimate/ChatBubble';
 import { EstimateInput } from '@/components/estimate/EstimateInput';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 
-const GREETING_TEXT = "Hi 👋 What are we estimating today? Tell me about your renovation — type, location, and rough size — or send a few photos and I'll get going.";
+function greetingText(firstName: string | null) {
+  const hi = firstName ? `Hi ${firstName} 👋` : 'Hi 👋';
+  return `${hi} What are we estimating today? Tell me about your renovation — type, location, and rough size — or send a few photos and I'll get going.`;
+}
 
 export default function Estimate() {
   return (
@@ -24,8 +27,26 @@ export default function Estimate() {
 function EstimateInner() {
   const tabBarHeight = useBottomTabBarHeight();
   const [messages, setMessages] = useState<ChatMessage[]>([
-    { id: 'g0', role: 'ai', content: GREETING_TEXT, ts: new Date() },
+    { id: 'g0', role: 'ai', content: greetingText(null), ts: new Date() },
   ]);
+
+  useEffect(() => {
+    (async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      const { data } = await supabase
+        .from('profiles')
+        .select('first_name')
+        .eq('id', user.id)
+        .maybeSingle();
+      const name = (data as { first_name?: string } | null)?.first_name ?? null;
+      if (!name) return;
+      setMessages(prev => {
+        if (prev[0]?.id !== 'g0') return prev;
+        return [{ ...prev[0], content: greetingText(name) }, ...prev.slice(1)];
+      });
+    })();
+  }, []);
   const [busy, setBusy] = useState(false);
   const [readyToEstimate, setReadyToEstimate] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
