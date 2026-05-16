@@ -127,7 +127,7 @@ export default function ConversationDetail() {
       style={{ flex: 1 }}
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
-      <SafeAreaView edges={['top']} style={{ flex: 1, backgroundColor: COLORS.warmWhite }}>
+      <SafeAreaView edges={['top', 'bottom']} style={{ flex: 1, backgroundColor: COLORS.warmWhite }}>
         <View
           style={{
             flexDirection: 'row', alignItems: 'center', gap: 12,
