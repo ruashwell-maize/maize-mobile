@@ -1,11 +1,27 @@
 import { useEffect, useState, useCallback, useMemo } from 'react';
-import { View, Text, ScrollView, ActivityIndicator, Pressable, RefreshControl } from 'react-native';
+import {
+  View, Text, ScrollView, ActivityIndicator, Pressable, RefreshControl,
+  Modal, TextInput, KeyboardAvoidingView, Platform, Alert,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { router } from 'expo-router';
+import { Plus } from 'lucide-react-native';
 import { supabase } from '@/lib/supabase';
 import { COLORS } from '@/constants/theme';
 import { ConversationRow, type Conversation } from '@/components/communications/ConversationRow';
 
 type ProjectLite = { id: string; name: string };
+
+const MESSAGE_TYPES = [
+  'Initial outreach',
+  'Follow-up',
+  'Variation request',
+  'Issue or complaint',
+] as const;
+type MessageType = typeof MESSAGE_TYPES[number];
+
+const CHANNELS = ['WhatsApp', 'Email'] as const;
+type Channel = typeof CHANNELS[number];
 
 export default function CommunicationsList() {
   const [conversations, setConversations] = useState<Conversation[]>([]);
@@ -13,6 +29,7 @@ export default function CommunicationsList() {
   const [filter, setFilter] = useState<'all' | 'unread' | string>('all');
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [modalVisible, setModalVisible] = useState(false);
 
   const load = useCallback(async () => {
     const [convRes, projRes] = await Promise.all([
@@ -94,7 +111,261 @@ export default function CommunicationsList() {
           filtered.map(c => <ConversationRow key={c.id} c={c} />)
         )}
       </ScrollView>
+
+      {/* FAB */}
+      <Pressable
+        onPress={() => setModalVisible(true)}
+        style={({ pressed }) => ({
+          position: 'absolute',
+          bottom: 24,
+          right: 20,
+          width: 56,
+          height: 56,
+          borderRadius: 28,
+          backgroundColor: pressed ? COLORS.primaryHover : COLORS.primary,
+          alignItems: 'center',
+          justifyContent: 'center',
+          shadowColor: '#000',
+          shadowOffset: { width: 0, height: 4 },
+          shadowOpacity: 0.18,
+          shadowRadius: 8,
+          elevation: 6,
+        })}
+      >
+        <Plus size={24} color="#fff" strokeWidth={2.5} />
+      </Pressable>
+
+      <NewMessageModal
+        visible={modalVisible}
+        projects={projects}
+        onClose={() => setModalVisible(false)}
+        onCreated={(id) => {
+          setModalVisible(false);
+          load();
+          router.push(`/communications/${id}`);
+        }}
+      />
     </SafeAreaView>
+  );
+}
+
+// ─── New Message Modal ────────────────────────────────────────────────────────
+
+type NewMessageModalProps = {
+  visible: boolean;
+  projects: ProjectLite[];
+  onClose: () => void;
+  onCreated: (id: string) => void;
+};
+
+function NewMessageModal({ visible, projects, onClose, onCreated }: NewMessageModalProps) {
+  const [contractorName, setContractorName] = useState('');
+  const [contractorCompany, setContractorCompany] = useState('');
+  const [projectId, setProjectId] = useState<string | null>(null);
+  const [messageType, setMessageType] = useState<MessageType>('Initial outreach');
+  const [channel, setChannel] = useState<Channel>('WhatsApp');
+  const [saving, setSaving] = useState(false);
+
+  function reset() {
+    setContractorName('');
+    setContractorCompany('');
+    setProjectId(null);
+    setMessageType('Initial outreach');
+    setChannel('WhatsApp');
+    setSaving(false);
+  }
+
+  async function handleStart() {
+    if (!contractorName.trim()) {
+      Alert.alert('Required', 'Please enter the contractor name.');
+      return;
+    }
+    setSaving(true);
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) { setSaving(false); return; }
+
+    const { data, error } = await supabase.from('communications').insert({
+      user_id:            user.id,
+      project_id:         projectId,
+      contractor_name:    contractorName.trim(),
+      contractor_company: contractorCompany.trim() || null,
+      channel:            channel.toLowerCase(),
+      direction:          'outbound',
+      status:             'draft',
+      subject:            messageType,
+      body:               '',
+    }).select('id').single();
+
+    setSaving(false);
+    if (error || !data) {
+      Alert.alert('Error', error?.message ?? 'Could not create conversation.');
+      return;
+    }
+    reset();
+    onCreated(data.id);
+  }
+
+  return (
+    <Modal visible={visible} animationType="slide" presentationStyle="pageSheet" onRequestClose={onClose}>
+      <KeyboardAvoidingView
+        style={{ flex: 1 }}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      >
+        <SafeAreaView style={{ flex: 1, backgroundColor: COLORS.warmWhite }}>
+          {/* Header */}
+          <View style={{
+            flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+            paddingHorizontal: 20, paddingTop: 16, paddingBottom: 12,
+            borderBottomWidth: 1, borderBottomColor: COLORS.n200,
+          }}>
+            <Text style={{ fontSize: 18, fontWeight: '700', color: COLORS.n900 }}>New message</Text>
+            <Pressable onPress={() => { reset(); onClose(); }}>
+              <Text style={{ fontSize: 15, color: COLORS.primary, fontWeight: '500' }}>Cancel</Text>
+            </Pressable>
+          </View>
+
+          <ScrollView
+            style={{ flex: 1 }}
+            contentContainerStyle={{ padding: 20, gap: 20 }}
+            keyboardShouldPersistTaps="handled"
+          >
+            {/* Contractor name */}
+            <Field label="Contractor name" required>
+              <TextInput
+                value={contractorName}
+                onChangeText={setContractorName}
+                placeholder="e.g. John Smith"
+                placeholderTextColor={COLORS.n500}
+                style={inputStyle}
+                autoCapitalize="words"
+                returnKeyType="next"
+              />
+            </Field>
+
+            {/* Contractor company */}
+            <Field label="Company" hint="optional">
+              <TextInput
+                value={contractorCompany}
+                onChangeText={setContractorCompany}
+                placeholder="e.g. Smith & Sons Ltd"
+                placeholderTextColor={COLORS.n500}
+                style={inputStyle}
+                autoCapitalize="words"
+                returnKeyType="done"
+              />
+            </Field>
+
+            {/* Project */}
+            {projects.length > 0 && (
+              <Field label="Project" hint="optional">
+                <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 4 }}>
+                  {projects.map(p => (
+                    <SelectChip
+                      key={p.id}
+                      label={p.name}
+                      active={projectId === p.id}
+                      onPress={() => setProjectId(prev => prev === p.id ? null : p.id)}
+                    />
+                  ))}
+                </View>
+              </Field>
+            )}
+
+            {/* Message type */}
+            <Field label="Message type">
+              <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 4 }}>
+                {MESSAGE_TYPES.map(t => (
+                  <SelectChip
+                    key={t}
+                    label={t}
+                    active={messageType === t}
+                    onPress={() => setMessageType(t)}
+                  />
+                ))}
+              </View>
+            </Field>
+
+            {/* Channel */}
+            <Field label="Channel">
+              <View style={{ flexDirection: 'row', gap: 8, marginTop: 4 }}>
+                {CHANNELS.map(c => (
+                  <SelectChip
+                    key={c}
+                    label={c}
+                    active={channel === c}
+                    onPress={() => setChannel(c)}
+                  />
+                ))}
+              </View>
+            </Field>
+          </ScrollView>
+
+          {/* Footer CTA */}
+          <View style={{
+            paddingHorizontal: 20, paddingBottom: Platform.OS === 'ios' ? 32 : 20, paddingTop: 12,
+            borderTopWidth: 1, borderTopColor: COLORS.n200, backgroundColor: COLORS.warmWhite,
+          }}>
+            <Pressable
+              onPress={handleStart}
+              disabled={saving}
+              style={({ pressed }) => ({
+                backgroundColor: pressed || saving ? COLORS.primaryHover : COLORS.primary,
+                borderRadius: 12,
+                paddingVertical: 15,
+                alignItems: 'center',
+              })}
+            >
+              <Text style={{ color: '#fff', fontWeight: '600', fontSize: 15 }}>
+                {saving ? 'Starting…' : 'Start conversation'}
+              </Text>
+            </Pressable>
+          </View>
+        </SafeAreaView>
+      </KeyboardAvoidingView>
+    </Modal>
+  );
+}
+
+// ─── Small helpers ────────────────────────────────────────────────────────────
+
+const inputStyle = {
+  backgroundColor: '#fff',
+  borderWidth: 1,
+  borderColor: COLORS.n300,
+  borderRadius: 10,
+  paddingHorizontal: 14,
+  paddingVertical: 11,
+  fontSize: 15,
+  color: COLORS.n900,
+};
+
+function Field({ label, hint, required, children }: {
+  label: string; hint?: string; required?: boolean; children: React.ReactNode;
+}) {
+  return (
+    <View style={{ gap: 6 }}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+        <Text style={{ fontSize: 13, fontWeight: '600', color: COLORS.n700 }}>{label}</Text>
+        {required && <Text style={{ fontSize: 13, color: COLORS.danger }}>*</Text>}
+        {hint && <Text style={{ fontSize: 12, color: COLORS.n500 }}>({hint})</Text>}
+      </View>
+      {children}
+    </View>
+  );
+}
+
+function SelectChip({ label, active, onPress }: { label: string; active: boolean; onPress: () => void }) {
+  return (
+    <Pressable
+      onPress={onPress}
+      style={{
+        paddingHorizontal: 14, paddingVertical: 8, borderRadius: 999,
+        backgroundColor: active ? COLORS.primary : '#fff',
+        borderWidth: 1, borderColor: active ? COLORS.primary : COLORS.n300,
+      }}
+    >
+      <Text style={{ fontSize: 13, fontWeight: '500', color: active ? '#fff' : COLORS.n700 }}>{label}</Text>
+    </Pressable>
   );
 }
 
