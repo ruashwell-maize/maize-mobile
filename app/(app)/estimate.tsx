@@ -16,6 +16,31 @@ function greetingText(firstName: string | null) {
   return `${hi} What are we estimating today? Tell me about your renovation — type, location, and rough size — or send a few photos and I'll get going.`;
 }
 
+// Client-side guard: all four minimum categories must be present in user messages
+// before the "Estimate ready" card can appear. Prevents the AI phrase triggering
+// prematurely when Haiku emits it after only 1-2 exchanges with minimal data.
+function hasMinimumCriteria(msgs: ChatMessage[]): boolean {
+  const text = msgs.filter(m => m.role === 'user').map(m => m.content).join(' ');
+
+  const hasType = /\bkitchen\b|\bbathroom\b|\bextension\b|\bloft\b|\brenovation\b|\bbedroom\b|\blounge\b|\bliving[\s-]room\b|\bwhole[\s-]?house\b|\bbasement\b|\bgarage\b/i.test(text);
+
+  const hasLocation = (
+    /\b[A-Z]{1,2}\d[A-Z\d]?\s?\d[A-Z]{2}\b/i.test(text) ||     // UK postcode
+    /\b(?:london|manchester|birmingham|bristol|leeds|edinburgh|glasgow|liverpool|brighton|oxford|cambridge|sheffield|nottingham|leicester|coventry|newcastle|reading|portsmouth|plymouth|exeter|norwich|york)\b/i.test(text) ||
+    /\b(?:hackney|islington|battersea|clapham|brixton|peckham|fulham|chelsea|shoreditch|dalston|southwark|lambeth|lewisham|greenwich|wandsworth|stratford|bermondsey)\b/i.test(text) ||
+    /\bin\s+[A-Z][a-z]{2,}/i.test(text)                          // "in Manchester" etc.
+  );
+
+  const hasScope = (
+    /\d+\s*(?:m²|m2|sqm|sq\.?\s*m|square\s*m(?:etre)?s?)/i.test(text) ||   // numeric area
+    /\b(?:full[\s-]?gut|full[\s-]?reno|cosmetic|partial|open[\s-]plan|knock[\s-]?through|full[\s-]?overhaul|refurb)/i.test(text)
+  );
+
+  const hasQuality = /\bluxury\b|\bbespoke\b|\bhigh[\s-]end\b|\bpremium\b|\bstandard\b|\bmid[\s-]?range\b|\beconomy\b|\bcheap\b|\blow[\s-]?cost\b/i.test(text);
+
+  return hasType && hasLocation && hasScope && hasQuality;
+}
+
 export default function Estimate() {
   return (
     <ErrorBoundary screenName="Estimate">
@@ -131,8 +156,9 @@ function EstimateInner() {
       }
 
       const aiText = data.content ?? "Sorry — I couldn't generate a response just now.";
-      setMessages(prev => [...prev, { id: `a${Date.now()}`, role: 'ai', content: aiText, ts: new Date() }]);
-      if (/enough to give you a solid estimate/i.test(aiText)) {
+      const nextMessages = [...draft, { id: `a${Date.now()}`, role: 'ai' as const, content: aiText, ts: new Date() }];
+      setMessages(nextMessages);
+      if (/enough to give you a solid estimate/i.test(aiText) && hasMinimumCriteria(nextMessages)) {
         setReadyToEstimate(true);
       }
       scrollToEnd();
