@@ -64,10 +64,17 @@ function hasMinimumCriteria(msgs: ChatMessage[]): boolean {
     /\blisted\s+building\b|\bconservation\s+area\b|\bgrade\s+(?:i{1,2}|[12])\b|\b(?:difficult|restricted|limited|poor)\s+access\b|\bnarrow\s+(?:access|road|street|lane)\b|\bdamp\b|\bmould?\b|\brot\b|\bsubsidence\b|\bold\s+wiring\b|\bold\s+(?:plumbing|pipework)\b/i.test(text)
   );
 
-  return (
+  const result = (
     hasType && hasLocation && hasScope && hasQuality && hasPropertyType &&
     hasBudget && hasTimeline && hasStructural && hasDesigns && hasAdditional
   );
+  console.log('[hasMinimumCriteria]', {
+    hasType, hasLocation, hasScope, hasQuality,
+    hasPropertyType, hasBudget, hasTimeline,
+    hasStructural, hasDesigns, hasAdditional,
+    result,
+  });
+  return result;
 }
 
 export default function Estimate() {
