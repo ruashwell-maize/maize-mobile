@@ -23,46 +23,44 @@ function greetingText(firstName: string | null) {
 // Structural / designs / additional-info checks accept a "no" / "nothing else" as a
 // meaningful answer, mirroring the web hasEnoughCriteria gate.
 function hasMinimumCriteria(msgs: ChatMessage[]): boolean {
-  const text = msgs.filter(m => m.role === 'user').map(m => m.content).join(' ');
+  // User-only text: what the homeowner actually told us (type, location, scope, quality,
+  // property, budget, timeline). Keeps these checks grounded in user-supplied facts.
+  const userText = msgs.filter(m => m.role === 'user').map(m => m.content).join(' ');
 
-  const hasType = /\bkitchen\b|\bbathroom\b|\bextension\b|\bloft\b|\brenovation\b|\bbedroom\b|\blounge\b|\bliving[\s-]room\b|\bwhole[\s-]?house\b|\bbasement\b|\bgarage\b/i.test(text);
+  // Full transcript: for Q8/Q9/Q10 the user typically replies "Yes" / "No" — keywords
+  // only exist in the AI's question. Scanning all messages means the AI asking the
+  // question is enough to satisfy the check, which is safe because mobile also requires
+  // the AI trigger phrase (only emitted after all 10 are answered).
+  const allText = msgs.map(m => m.content).join(' ');
+
+  const hasType = /\bkitchen\b|\bbathroom\b|\bextension\b|\bloft\b|\brenovation\b|\bbedroom\b|\blounge\b|\bliving[\s-]room\b|\bwhole[\s-]?house\b|\bbasement\b|\bgarage\b/i.test(userText);
 
   const hasLocation = (
-    /\b[A-Z]{1,2}\d[A-Z\d]?\s?\d[A-Z]{2}\b/i.test(text) ||     // UK postcode
-    /\b(?:london|manchester|birmingham|bristol|leeds|edinburgh|glasgow|liverpool|brighton|oxford|cambridge|sheffield|nottingham|leicester|coventry|newcastle|reading|portsmouth|plymouth|exeter|norwich|york)\b/i.test(text) ||
-    /\b(?:hackney|islington|battersea|clapham|brixton|peckham|fulham|chelsea|shoreditch|dalston|southwark|lambeth|lewisham|greenwich|wandsworth|stratford|bermondsey)\b/i.test(text) ||
-    /\bin\s+[A-Z][a-z]{2,}/i.test(text)                          // "in Manchester" etc.
+    /\b[A-Z]{1,2}\d[A-Z\d]?\s?\d[A-Z]{2}\b/i.test(userText) ||     // UK postcode
+    /\b(?:london|manchester|birmingham|bristol|leeds|edinburgh|glasgow|liverpool|brighton|oxford|cambridge|sheffield|nottingham|leicester|coventry|newcastle|reading|portsmouth|plymouth|exeter|norwich|york)\b/i.test(userText) ||
+    /\b(?:hackney|islington|battersea|clapham|brixton|peckham|fulham|chelsea|shoreditch|dalston|southwark|lambeth|lewisham|greenwich|wandsworth|stratford|bermondsey)\b/i.test(userText) ||
+    /\bin\s+[A-Z][a-z]{2,}/i.test(userText)                          // "in Manchester" etc.
   );
 
   const hasScope = (
-    /\d+\s*(?:m²|m2|sqm|sq\.?\s*m|square\s*m(?:etre)?s?)/i.test(text) ||   // numeric area
-    /\b(?:full[\s-]?gut|full[\s-]?reno|cosmetic|partial|open[\s-]plan|knock[\s-]?through|full[\s-]?overhaul|refurb)/i.test(text)
+    /\d+\s*(?:m²|m2|sqm|sq\.?\s*m|square\s*m(?:etre)?s?)/i.test(userText) ||   // numeric area
+    /\b(?:full[\s-]?gut|full[\s-]?reno|cosmetic|partial|open[\s-]plan|knock[\s-]?through|full[\s-]?overhaul|refurb)/i.test(userText)
   );
 
-  const hasQuality = /\bluxury\b|\bbespoke\b|\bhigh[\s-]end\b|\bpremium\b|\bstandard\b|\bmid[\s-]?range\b|\beconomy\b|\bcheap\b|\blow[\s-]?cost\b/i.test(text);
+  const hasQuality = /\bluxury\b|\bbespoke\b|\bhigh[\s-]end\b|\bpremium\b|\bstandard\b|\bmid[\s-]?range\b|\beconomy\b|\bcheap\b|\blow[\s-]?cost\b/i.test(userText);
 
-  const hasPropertyType = /\bhouse\b|\bflat\b|\bapartment\b|\bterraced?\b|\bsemi[\s-]?detached\b|\bdetached\b|\bbungalow\b|\bmaisonette\b|\bnew[\s-]?build\b|\bvictorian\b|\bedwardian\b|\bgeorgian\b|\bperiod\s+(?:property|home|house)\b/i.test(text);
+  const hasPropertyType = /\bhouse\b|\bflat\b|\bapartment\b|\bterraced?\b|\bsemi[\s-]?detached\b|\bdetached\b|\bbungalow\b|\bmaisonette\b|\bnew[\s-]?build\b|\bvictorian\b|\bedwardian\b|\bgeorgian\b|\bperiod\s+(?:property|home|house)\b/i.test(userText);
 
-  const hasBudget = /£\s*\d|\b\d+\s*(?:k|grand|thousand)\b|\bbudget\b|\bspend(?:ing)?\b|\bballpark\b/i.test(text);
+  const hasBudget = /£\s*\d|\b\d+\s*(?:k|grand|thousand)\b|\bbudget\b|\bspend(?:ing)?\b|\bballpark\b/i.test(userText);
 
-  const hasTimeline = /\b\d+\s*(?:weeks?|months?|years?)\b|\basap\b|\bnext\s+(?:spring|summer|autumn|winter|year|month)\b|\bby\s+(?:christmas|xmas|[a-z]+\s+\d{4})\b|\bstart(?:ing)?\s+(?:in\s+)?(?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)/i.test(text);
+  const hasTimeline = /\b\d+\s*(?:weeks?|months?|years?)\b|\basap\b|\bnext\s+(?:spring|summer|autumn|winter|year|month)\b|\bby\s+(?:christmas|xmas|[a-z]+\s+\d{4})\b|\bstart(?:ing)?\s+(?:in\s+)?(?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)/i.test(userText);
 
-  const hasStructural = (
-    /\b(?:no|not|non)[\s-]?(?:structural|walls?\s+(?:coming\s+)?down|knock[\s-]?through|rewir|replumb)/i.test(text) ||
-    /\bnothing\s+structural\b/i.test(text) ||
-    /\bknock(?:ing)?[\s-]?through\b|\bremov(?:e|ing)\s+(?:a\s+)?wall|\bmov(?:e|ing)\s+(?:a\s+)?wall|\bload[\s-]bearing\b|\brsj\b|\bsteel\s+beam\b|\bre[\s-]?wir(?:e|ing)\b|\bre[\s-]?plumb(?:ing)?\b|\bnew\s+foundations?\b|\bunderpin(?:ning)?\b|\bstructural\b/i.test(text)
-  );
+  // Q8–Q10: scan full transcript — keywords live in the AI's question text
+  const hasStructural = /\bstructural\b|\bknock[\s-]?through\b|\bload[\s-]bearing\b|\brsj\b|\bsteel\s+beam\b|\bre[\s-]?wir(?:e|ing)\b|\bre[\s-]?plumb(?:ing)?\b|\bfoundations?\b|\bunderpin(?:ning)?\b/i.test(allText);
 
-  const hasDesigns = (
-    /\b(?:have|got|need|want|no)\b[^.]*\b(?:design|designer|architect|drawings?|plans?)\b/i.test(text) ||
-    /\bdesigns?\s+(?:are\s+)?(?:done|ready|sorted|finalised)\b/i.test(text) ||
-    /\bdesign\s+help\b/i.test(text)
-  );
+  const hasDesigns = /\bdesigns?\b|\bdrawings?\b|\barchitect\b|\bplans?\b|\bdesign\s+help\b/i.test(allText);
 
-  const hasAdditional = (
-    /\b(?:nothing\s+else|that'?s\s+(?:it|all|everything)|no(?:thing)?\s+(?:more|further)|all\s+good|can'?t\s+think\s+of\s+anything)\b/i.test(text) ||
-    /\blisted\s+building\b|\bconservation\s+area\b|\bgrade\s+(?:i{1,2}|[12])\b|\b(?:difficult|restricted|limited|poor)\s+access\b|\bnarrow\s+(?:access|road|street|lane)\b|\bdamp\b|\bmould?\b|\brot\b|\bsubsidence\b|\bold\s+wiring\b|\bold\s+(?:plumbing|pipework)\b/i.test(text)
-  );
+  const hasAdditional = /\banything\s+else\b|\blisted\s+building\b|\bconservation\s+area\b|\bdifficult\s+access\b|\bdamp\b|\bold\s+wiring\b|\bold\s+(?:plumbing|pipework)\b|\baffect\s+the\s+cost\b/i.test(allText);
 
   const result = (
     hasType && hasLocation && hasScope && hasQuality && hasPropertyType &&
