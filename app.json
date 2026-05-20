@@ -14,7 +14,10 @@
     },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.anonymous.maize-mobile"
+      "bundleIdentifier": "com.anonymous.maize-mobile",
+      "infoPlist": {
+        "NSUserNotificationUsageDescription": "Maize sends you a morning briefing when your projects need attention."
+      }
     },
     "android": {
       "adaptiveIcon": {
@@ -40,6 +43,12 @@
         {
           "photosPermission": "Maize uses your photos to estimate renovation costs from images of your space.",
           "cameraPermission": "Maize uses the camera to capture images of your space for renovation estimates."
+        }
+      ],
+      [
+        "expo-notifications",
+        {
+          "iosDisplayInForeground": true
         }
       ]
     ]

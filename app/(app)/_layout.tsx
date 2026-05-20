@@ -1,61 +1,144 @@
+import React, { useCallback, useEffect, useState } from 'react';
 import { Tabs } from 'expo-router';
 import { Home, LayoutDashboard, MessageSquare, FileText, Calculator } from 'lucide-react-native';
+import * as SecureStore from 'expo-secure-store';
 import { COLORS } from '@/constants/theme';
+import { supabase } from '@/lib/supabase';
+import { BriefingModal } from '@/components/briefing/BriefingModal';
+import { BriefingProvider } from '@/context/BriefingContext';
+import { BriefingItem, MOCK_BRIEFING } from '@/components/briefing/briefingTypes';
+import {
+  requestNotificationPermission,
+  scheduleMorningBriefing,
+} from '@/lib/notifications';
+
+const LAST_BRIEFING_KEY = 'maize_last_briefing_date';
+
+function todayISO() {
+  return new Date().toISOString().slice(0, 10);
+}
 
 export default function AppLayout() {
+  const [briefingItems, setBriefingItems] = useState<BriefingItem[]>([]);
+  const [showBriefing, setShowBriefing] = useState(false);
+  const [firstName, setFirstName] = useState('');
+  const [userId, setUserId] = useState('');
+  const [briefingDate] = useState(todayISO());
+
+  const badgeCount = briefingItems.length;
+
+  const openBriefing = useCallback(() => setShowBriefing(true), []);
+
+  useEffect(() => {
+    async function bootstrap() {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.user) return;
+
+      setUserId(session.user.id);
+
+      // Fetch profile for name, management_style, briefing_time
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('first_name, management_style, briefing_time')
+        .eq('id', session.user.id)
+        .single();
+
+      if (profile?.first_name) setFirstName(profile.first_name);
+
+      // Only show briefing for ai_managed users
+      if (profile?.management_style !== 'ai_managed') return;
+
+      // Check if already shown today
+      const lastDate = await SecureStore.getItemAsync(LAST_BRIEFING_KEY);
+      if (lastDate === briefingDate) return;
+
+      // Mark shown for today
+      await SecureStore.setItemAsync(LAST_BRIEFING_KEY, briefingDate);
+
+      // In production: fetch real briefing items from API
+      // For now: use mock data to confirm the UI works
+      setBriefingItems(MOCK_BRIEFING);
+      setShowBriefing(true);
+
+      // Schedule morning notification
+      const granted = await requestNotificationPermission();
+      if (granted) {
+        const briefingTime = profile?.briefing_time ?? '09:00';
+        await scheduleMorningBriefing(briefingTime);
+      }
+    }
+
+    bootstrap();
+  }, [briefingDate]);
+
+  function handleClose() {
+    setShowBriefing(false);
+  }
+
   return (
-    <Tabs
-      screenOptions={{
-        headerShown: false,
-        tabBarActiveTintColor:   COLORS.primary,
-        tabBarInactiveTintColor: COLORS.n500,
-        tabBarLabelStyle: { fontSize: 10, fontWeight: '500', marginTop: -2 },
-        tabBarStyle: {
-          backgroundColor: '#ffffff',
-          borderTopColor:  COLORS.n200,
-          borderTopWidth:  1,
-          height:          84,
-          paddingTop:      6,
-          paddingBottom:   24,
-        },
-      }}
-    >
-      <Tabs.Screen
-        name="index"
-        options={{
-          title: 'Home',
-          tabBarIcon: ({ color, size }) => <Home          size={size ?? 22} color={color} strokeWidth={1.8} />,
-        }}
+    <BriefingProvider value={{ badgeCount, openBriefing }}>
+      <BriefingModal
+        visible={showBriefing}
+        items={briefingItems}
+        firstName={firstName}
+        userId={userId}
+        briefingDate={briefingDate}
+        onClose={handleClose}
       />
-      <Tabs.Screen
-        name="control-centre"
-        options={{
-          title: 'Control',
-          tabBarIcon: ({ color, size }) => <LayoutDashboard size={size ?? 22} color={color} strokeWidth={1.8} />,
+
+      <Tabs
+        screenOptions={{
+          headerShown: false,
+          tabBarActiveTintColor:   COLORS.primary,
+          tabBarInactiveTintColor: COLORS.n500,
+          tabBarLabelStyle: { fontSize: 10, fontWeight: '500', marginTop: -2 },
+          tabBarStyle: {
+            backgroundColor: '#ffffff',
+            borderTopColor:  COLORS.n200,
+            borderTopWidth:  1,
+            height:          84,
+            paddingTop:      6,
+            paddingBottom:   24,
+          },
         }}
-      />
-      <Tabs.Screen
-        name="communications"
-        options={{
-          title: 'Comms',
-          tabBarIcon: ({ color, size }) => <MessageSquare size={size ?? 22} color={color} strokeWidth={1.8} />,
-        }}
-      />
-      <Tabs.Screen
-        name="contracts"
-        options={{
-          title: 'Contracts',
-          tabBarIcon: ({ color, size }) => <FileText      size={size ?? 22} color={color} strokeWidth={1.8} />,
-        }}
-      />
-      <Tabs.Screen
-        name="estimate"
-        options={{
-          title: 'Estimate',
-          tabBarIcon: ({ color, size }) => <Calculator    size={size ?? 22} color={color} strokeWidth={1.8} />,
-        }}
-      />
-      <Tabs.Screen name="settings" options={{ href: null }} />
-    </Tabs>
+      >
+        <Tabs.Screen
+          name="index"
+          options={{
+            title: 'Home',
+            tabBarIcon: ({ color, size }) => <Home          size={size ?? 22} color={color} strokeWidth={1.8} />,
+          }}
+        />
+        <Tabs.Screen
+          name="control-centre"
+          options={{
+            title: 'Control',
+            tabBarIcon: ({ color, size }) => <LayoutDashboard size={size ?? 22} color={color} strokeWidth={1.8} />,
+          }}
+        />
+        <Tabs.Screen
+          name="communications"
+          options={{
+            title: 'Comms',
+            tabBarIcon: ({ color, size }) => <MessageSquare size={size ?? 22} color={color} strokeWidth={1.8} />,
+          }}
+        />
+        <Tabs.Screen
+          name="contracts"
+          options={{
+            title: 'Contracts',
+            tabBarIcon: ({ color, size }) => <FileText      size={size ?? 22} color={color} strokeWidth={1.8} />,
+          }}
+        />
+        <Tabs.Screen
+          name="estimate"
+          options={{
+            title: 'Estimate',
+            tabBarIcon: ({ color, size }) => <Calculator    size={size ?? 22} color={color} strokeWidth={1.8} />,
+          }}
+        />
+        <Tabs.Screen name="settings" options={{ href: null }} />
+      </Tabs>
+    </BriefingProvider>
   );
 }
