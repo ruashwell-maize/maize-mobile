@@ -6,11 +6,35 @@ import { COLORS } from '@/constants/theme';
 import { supabase } from '@/lib/supabase';
 import { BriefingModal } from '@/components/briefing/BriefingModal';
 import { BriefingProvider } from '@/context/BriefingContext';
-import { BriefingItem, MOCK_BRIEFING } from '@/components/briefing/briefingTypes';
+import { BriefingItem } from '@/components/briefing/briefingTypes';
 import {
   requestNotificationPermission,
   scheduleMorningBriefing,
 } from '@/lib/notifications';
+import { apiFetch } from '@/constants/api';
+
+// Convert the live API shape ({projectName, description, riskConsequence})
+// to the local BriefingItem the mobile UI expects.
+type ApiBriefingItem = {
+  id:               string;
+  type:             'update' | 'action' | 'risk' | 'decision';
+  projectName?:     string;
+  title:            string;
+  description:      string;
+  riskConsequence?: string;
+};
+
+function fromApiItem(a: ApiBriefingItem): BriefingItem {
+  return {
+    id:               a.id,
+    type:             a.type,
+    title:            a.title,
+    body:             a.description,
+    project_name:     a.projectName ?? 'Your projects',
+    urgency:          'medium',
+    risk_consequence: a.riskConsequence,
+  };
+}
 
 const LAST_BRIEFING_KEY = 'maize_last_briefing_date';
 
@@ -50,15 +74,29 @@ export default function AppLayout() {
 
       // Check if already shown today
       const lastDate = await SecureStore.getItemAsync(LAST_BRIEFING_KEY);
-      if (lastDate === briefingDate) return;
+      const alreadyShownToday = lastDate === briefingDate;
 
-      // Mark shown for today
-      await SecureStore.setItemAsync(LAST_BRIEFING_KEY, briefingDate);
+      // Fetch today's briefing from the live API
+      try {
+        const res = await apiFetch('/api/daily-briefing');
+        if (res.ok) {
+          const json = await res.json() as { items: ApiBriefingItem[]; generated: boolean };
+          if (json.generated) {
+            setBriefingItems(json.items.map(fromApiItem));
+          } else {
+            setBriefingItems([]);
+          }
+        }
+      } catch {
+        // Network failure → leave items empty; modal will show empty state
+        setBriefingItems([]);
+      }
 
-      // In production: fetch real briefing items from API
-      // For now: use mock data to confirm the UI works
-      setBriefingItems(MOCK_BRIEFING);
-      setShowBriefing(true);
+      // Only auto-open once per day
+      if (!alreadyShownToday) {
+        await SecureStore.setItemAsync(LAST_BRIEFING_KEY, briefingDate);
+        setShowBriefing(true);
+      }
 
       // Schedule morning notification
       const granted = await requestNotificationPermission();
